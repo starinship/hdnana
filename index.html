@@ -55,6 +55,17 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
 .delete-btn:hover { background:#b02a37; }
 .current-date { margin-left:auto; font-size:0.9rem; }
 .sub-header { background:#d9e9f5; font-size:0.85rem; }
+
+.lots-editor { display:flex; flex-direction:column; gap:6px; min-width:260px; text-align:left; }
+.lot-row { display:flex; flex-wrap:wrap; gap:4px; align-items:center; background:#f7fbff; border:1px solid #d4e4f0; border-radius:10px; padding:4px 6px; }
+.lot-row input.lot-loc { flex:1 1 90px; min-width:80px; text-align:left; }
+.lot-row input.lot-exp { flex:0 0 130px; }
+.lot-row input.lot-qty { flex:0 0 56px; }
+.lot-row .lot-del { flex:0 0 auto; padding:4px 8px; font-size:11px; }
+.lot-add-btn { background:#4a8ab5; font-size:12px; padding:4px 10px; align-self:flex-start; }
+.lot-add-btn:hover { background:#3a6f90; }
+.save-hint { width:100%; margin-top:10px; font-size:0.82rem; line-height:1.45; color:#3d4f66; background:#f3f8fc; border:1px solid #c9dceb; border-radius:12px; padding:10px 14px; }
+.save-hint code { background:#e8f0f7; padding:1px 5px; border-radius:4px; font-size:0.9em; }
 @media (max-width:720px) {
   .app-title { font-size:1.15rem; }
   .tab-btn { flex:1 1 auto; text-align:center; padding:10px 12px; font-size:0.85rem; }
@@ -85,6 +96,11 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         <button type="button" id="btnPrint">🖨️ 列印本頁</button>
         <input type="file" id="importAllInput" accept=".json,application/json" style="display:none">
         <span id="saveStatus" class="save-status">尚未儲存</span>
+      </div>
+      <div class="save-hint no-print" id="saveHint">
+        💾 <strong>儲存位置說明：</strong>資料只寫入<strong>本機瀏覽器的 localStorage</strong>（僅存在「開啟此頁的這台電腦／這個瀏覽器」），<strong>不會</strong>自動同步到 Google Drive 或雲端。
+        主要鍵名：<code>CatheterBorrowData_v2</code>（導管）、<code>BackupBatchInventory</code>（後備物料）、<code>HD_PeriodsData_v2</code>（每週進出）、以及日期／分頁偏好鍵。
+        請定期用「匯出全部 JSON」或各頁 Excel 備份；<strong>搬移／複製 HTML 檔不會帶走資料</strong>，到新電腦或新瀏覽器請先匯出再「匯入全部 JSON」還原。
       </div>
     </div>
     <nav class="tab-bar no-print" role="tablist">
@@ -120,8 +136,8 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
     <div class="table-wrapper">
         <table id="cat_stockTable">
             <thead>
-                <tr><th>導管型號</th><th>單位</th><th>Loc No.</th><th>到期日期</th><th>上週結存(期初)</th><th>本週入庫</th><th>本週實際使用</th><th>本週返貨(歸還)</th><th>本週結存</th></tr>
-                <tr style="background:#f0f8ff"><th colspan="9">⚠️ 操作：手動填寫 Loc No.、到期日期、上週結存、本週入庫。「實際使用」與「返貨」由下方借用單自動計算。到期日與 Loc No. 會隨儲存保留。</th></tr>
+                <tr><th>導管型號</th><th>單位</th><th>批號／位置／到期（可多筆）</th><th>上週結存(期初)</th><th>本週入庫</th><th>本週實際使用</th><th>本週返貨(歸還)</th><th>本週結存</th></tr>
+                <tr style="background:#f0f8ff"><th colspan="8">⚠️ 操作：同一型號可新增多筆 Loc No.／到期日期（選填數量）。庫存數字仍以型號列為準（借用單自動算使用／返貨）。批號資料會隨儲存與「複製上期結存」保留。</th></tr>
             </thead>
             <tbody id="cat_stockBody"></tbody>
         </table>
@@ -267,6 +283,36 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
     }
   }
 
+
+  function stampMacau() {
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      }).formatToParts(new Date());
+      const g = t => parts.find(p => p.type === t).value;
+      let h = g('hour'); if (h === '24') h = '00';
+      return `${g('year')}${g('month')}${g('day')}-${h}${g('minute')}${g('second')}`;
+    } catch (e) {
+      const n = new Date();
+      const p = v => String(v).padStart(2, '0');
+      return `${n.getFullYear()}${p(n.getMonth()+1)}${p(n.getDate())}-${p(n.getHours())}${p(n.getMinutes())}${p(n.getSeconds())}`;
+    }
+  }
+
+  function sanitizeFilename(name) {
+    return String(name)
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+      .replace(/\s+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+  }
+
+  function exportFilename(prefix, ext) {
+    const e = ext.startsWith('.') ? ext : ('.' + ext);
+    return sanitizeFilename(`${prefix}_${stampMacau()}`) + e;
+  }
+
   function formatSavedTime(iso) {
     if (!iso) return '尚未儲存';
     try {
@@ -330,7 +376,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `血液透析記錄中心備份_${todayMacau()}.json`;
+    a.download = exportFilename('血液透析記錄中心備份', 'json');
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
     window.__nanaMarkSaved('匯出');
@@ -434,13 +480,57 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const stored = localStorage.getItem("CatheterBorrowData_v2");
         if (stored) allPeriodsData = JSON.parse(stored);
         else allPeriodsData = {};
+        for (const key of Object.keys(allPeriodsData)) {
+            const pd = allPeriodsData[key];
+            if (pd && Array.isArray(pd.stockRows)) {
+                pd.stockRows = pd.stockRows.map(migrateStockRow);
+            }
+        }
     }
     function saveAllData() { localStorage.setItem("CatheterBorrowData_v2", JSON.stringify(allPeriodsData)); if (window.__nanaMarkSaved) window.__nanaMarkSaved("catheter"); }
 
+    function normalizeLots(row) {
+        if (!row) return [{ locNo: "", expiryDate: "", qty: "" }];
+        if (Array.isArray(row.lots) && row.lots.length) {
+            return row.lots.map(l => ({
+                locNo: l && l.locNo != null ? String(l.locNo) : "",
+                expiryDate: l && l.expiryDate ? l.expiryDate : "",
+                qty: (l && l.qty != null && l.qty !== "") ? l.qty : ""
+            }));
+        }
+        if ((row.locNo != null && String(row.locNo) !== "") || row.expiryDate) {
+            return [{ locNo: row.locNo != null ? String(row.locNo) : "", expiryDate: row.expiryDate || "", qty: "" }];
+        }
+        return [{ locNo: "", expiryDate: "", qty: "" }];
+    }
+
+    function emptyStockRow() {
+        return { prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0, lots: [{ locNo: "", expiryDate: "", qty: "" }] };
+    }
+
+    function serializeStockRow(r) {
+        return {
+            prevStock: r.prevStock || 0,
+            inbound: r.inbound || 0,
+            used: r.used || 0,
+            returned: r.returned || 0,
+            endStock: r.endStock || 0,
+            lots: normalizeLots(r)
+        };
+    }
+
+    function migrateStockRow(r) {
+        const base = serializeStockRow(r || {});
+        // drop legacy flat fields from in-memory model after migrate
+        return base;
+    }
+
     function getPeriodData(periodKey) {
         if (!allPeriodsData[periodKey]) {
-            const stockRows = CATHETER_MODELS.map(() => ({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0, locNo: "", expiryDate: "" }));
+            const stockRows = CATHETER_MODELS.map(() => emptyStockRow());
             allPeriodsData[periodKey] = { stockRows: stockRows, orders: [] };
+        } else if (allPeriodsData[periodKey].stockRows) {
+            allPeriodsData[periodKey].stockRows = allPeriodsData[periodKey].stockRows.map(migrateStockRow);
         }
         return allPeriodsData[periodKey];
     }
@@ -448,7 +538,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
     function saveCurrentPeriod() {
         if (!currentPeriodKey) return;
         const periodData = getPeriodData(currentPeriodKey);
-        periodData.stockRows = currentStockRows.map(r => ({ prevStock: r.prevStock||0, inbound: r.inbound||0, used: r.used||0, returned: r.returned||0, endStock: r.endStock||0, locNo: r.locNo||"", expiryDate: r.expiryDate||"" }));
+        periodData.stockRows = currentStockRows.map(serializeStockRow);
         periodData.orders = JSON.parse(JSON.stringify(currentOrders));
         allPeriodsData[currentPeriodKey] = periodData;
         saveAllData();
@@ -482,20 +572,80 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         return end < 0 ? 0 : end;
     }
 
+    function escapeAttr(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    function renderLotsEditor(modelIdx, lots) {
+        let html = '<div class="lots-editor">';
+        lots.forEach((lot, li) => {
+            html += `<div class="lot-row" data-model="${modelIdx}" data-lot="${li}">
+                <input type="text" class="lot-loc" data-model="${modelIdx}" data-lot="${li}" value="${escapeAttr(lot.locNo)}" placeholder="Loc No.／位置" title="Loc No.／位置編號">
+                <input type="date" class="lot-exp" data-model="${modelIdx}" data-lot="${li}" value="${escapeAttr(lot.expiryDate)}" title="到期日期">
+                <input type="number" class="lot-qty" data-model="${modelIdx}" data-lot="${li}" value="${escapeAttr(lot.qty)}" placeholder="數量" min="0" step="1" title="批號數量（選填）">
+                <button type="button" class="delete-btn lot-del" data-model="${modelIdx}" data-lot="${li}" title="刪除此批號">刪</button>
+            </div>`;
+        });
+        html += `<button type="button" class="lot-add-btn" data-model="${modelIdx}">＋新增批號／位置</button></div>`;
+        return html;
+    }
+
+    function bindLotsEditors() {
+        document.querySelectorAll('.lot-loc, .lot-exp, .lot-qty').forEach(inp => {
+            const commit = (e) => {
+                const mi = parseInt(e.target.dataset.model, 10);
+                const li = parseInt(e.target.dataset.lot, 10);
+                if (!currentStockRows[mi] || !currentStockRows[mi].lots[li]) return;
+                if (e.target.classList.contains('lot-loc')) currentStockRows[mi].lots[li].locNo = e.target.value;
+                else if (e.target.classList.contains('lot-exp')) currentStockRows[mi].lots[li].expiryDate = e.target.value;
+                else if (e.target.classList.contains('lot-qty')) {
+                    const v = e.target.value;
+                    currentStockRows[mi].lots[li].qty = (v === '' ? '' : (parseFloat(v) || 0));
+                }
+                saveCurrentPeriod();
+            };
+            inp.addEventListener('change', commit);
+            inp.addEventListener('blur', commit);
+            if (inp.classList.contains('lot-exp')) inp.addEventListener('input', commit);
+        });
+        document.querySelectorAll('.lot-add-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mi = parseInt(e.currentTarget.dataset.model, 10);
+                if (!currentStockRows[mi].lots) currentStockRows[mi].lots = [];
+                currentStockRows[mi].lots.push({ locNo: "", expiryDate: "", qty: "" });
+                renderStockTable();
+                saveCurrentPeriod();
+            });
+        });
+        document.querySelectorAll('.lot-del').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mi = parseInt(e.currentTarget.dataset.model, 10);
+                const li = parseInt(e.currentTarget.dataset.lot, 10);
+                const lots = currentStockRows[mi].lots || [];
+                if (lots.length <= 1) {
+                    currentStockRows[mi].lots = [{ locNo: "", expiryDate: "", qty: "" }];
+                } else {
+                    lots.splice(li, 1);
+                    currentStockRows[mi].lots = lots;
+                }
+                renderStockTable();
+                saveCurrentPeriod();
+            });
+        });
+    }
+
     function renderStockTable() {
         const tbody = document.getElementById('cat_stockBody');
         tbody.innerHTML = '';
         for (let i = 0; i < CATHETER_MODELS.length; i++) {
             const model = CATHETER_MODELS[i];
             const row = currentStockRows[i];
-            if (row.locNo == null) row.locNo = "";
-            if (row.expiryDate == null) row.expiryDate = "";
+            row.lots = normalizeLots(row);
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${model.name}${model.type ? ` (${model.type})` : ''}</td>
                 <td>${model.unit}</td>
-                <td><input type="text" class="locNo" data-idx="${i}" value="${String(row.locNo).replace(/"/g, '&quot;')}" placeholder="位置編號" style="text-align:left;"></td>
-                <td><input type="date" class="expiryDate" data-idx="${i}" value="${row.expiryDate || ''}"></td>
+                <td>${renderLotsEditor(i, row.lots)}</td>
                 <td><input type="number" class="prevStock" data-idx="${i}" value="${row.prevStock}"></td>
                 <td><input type="number" class="inbound" data-idx="${i}" value="${row.inbound}"></td>
                 <td class="readonly-cell usedCell">${row.used}</td>
@@ -516,25 +666,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
                 saveCurrentPeriod();
             });
         });
-        // Loc No. / 到期日期：寫入資料後儲存，不重繪整個表格，避免輸入被重置或失焦
-        document.querySelectorAll('.locNo').forEach(inp => {
-            const commit = (e) => {
-                const idx = parseInt(e.target.dataset.idx);
-                currentStockRows[idx].locNo = e.target.value;
-                saveCurrentPeriod();
-            };
-            inp.addEventListener('change', commit);
-            inp.addEventListener('blur', commit);
-        });
-        document.querySelectorAll('.expiryDate').forEach(inp => {
-            const commit = (e) => {
-                const idx = parseInt(e.target.dataset.idx);
-                currentStockRows[idx].expiryDate = e.target.value;
-                saveCurrentPeriod();
-            };
-            inp.addEventListener('change', commit);
-            inp.addEventListener('input', commit);
-        });
+        bindLotsEditors();
     }
 
     function renderUsageDetailTable() {
@@ -744,15 +876,14 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
             const prevRow = prevData.stockRows[i] || {};
             currentStockRows[i].prevStock = prevRow.endStock || 0;
             currentStockRows[i].inbound = 0;
-            // 帶入上期 Loc No.／到期日期，避免切換區間後被清空
-            if (prevRow.locNo != null && prevRow.locNo !== "") currentStockRows[i].locNo = prevRow.locNo;
-            if (prevRow.expiryDate) currentStockRows[i].expiryDate = prevRow.expiryDate;
+            // 帶入上期批號／Loc／到期（含多批號）
+            currentStockRows[i].lots = normalizeLots(prevRow).map(l => ({ locNo: l.locNo, expiryDate: l.expiryDate, qty: l.qty }));
         }
         recalcUsageAndReturnFromOrders();
         renderStockTable();
         renderUsageDetailTable();
         saveCurrentPeriod();
-        alert("已複製上期結存作為本期期初，並清空本週入庫。");
+        alert("已複製上期結存與批號／Loc／到期作為本期期初，並清空本週入庫。");
     }
 
     function clearInOut() {
@@ -764,16 +895,23 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
     }
 
     function exportStockExcel() {
-        const sheetData = [["導管型號","單位","Loc No.","到期日期","上週結存(期初)","本週入庫","本週實際使用","本週返貨(歸還)","本週結存"]];
+        const sheetData = [["導管型號","單位","Loc No.","到期日期","批號數量","上週結存(期初)","本週入庫","本週實際使用","本週返貨(歸還)","本週結存"]];
         for (let i=0; i<CATHETER_MODELS.length; i++) {
             const m = CATHETER_MODELS[i];
             const r = currentStockRows[i];
-            sheetData.push([m.name, m.unit, r.locNo||"", r.expiryDate||"", r.prevStock, r.inbound, r.used, r.returned, r.endStock]);
+            const lots = normalizeLots(r);
+            lots.forEach((lot, li) => {
+                const first = li === 0;
+                sheetData.push([
+                    m.name, m.unit, lot.locNo || "", lot.expiryDate || "", lot.qty === "" ? "" : lot.qty,
+                    first ? r.prevStock : "", first ? r.inbound : "", first ? r.used : "", first ? r.returned : "", first ? r.endStock : ""
+                ]);
+            });
         }
         const ws = XLSX.utils.aoa_to_sheet(sheetData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, `庫存_${currentPeriodKey}`);
-        XLSX.writeFile(wb, `導管庫存_${currentPeriodKey}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "庫存");
+        XLSX.writeFile(wb, exportFilename(`導管庫存_${currentPeriodKey}`, 'xlsx'));
     }
 
     function exportUsageDetailExcel() {
@@ -797,7 +935,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const ws = XLSX.utils.aoa_to_sheet(sheetData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, `病人領用明細_${currentPeriodKey}`);
-        XLSX.writeFile(wb, `病人領用明細_${currentPeriodKey}.xlsx`);
+        XLSX.writeFile(wb, exportFilename(`病人領用明細_${currentPeriodKey}`, 'xlsx'));
     }
 
     function getMonthSummaryData(monthStr) {
@@ -852,7 +990,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const ws = XLSX.utils.aoa_to_sheet(sheetData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, `每月總結_${monthStr}`);
-        XLSX.writeFile(wb, `導管每月總結_${monthStr}.xlsx`);
+        XLSX.writeFile(wb, exportFilename(`導管每月總結_${monthStr}`, 'xlsx'));
     }
 
     function exportYearSummary() {
@@ -883,7 +1021,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const ws = XLSX.utils.aoa_to_sheet(sheetData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, `每年總結_${yearStr}`);
-        XLSX.writeFile(wb, `導管每年總結_${yearStr}.xlsx`);
+        XLSX.writeFile(wb, exportFilename(`導管每年總結_${yearStr}`, 'xlsx'));
     }
 
     function backupAll() {
@@ -892,7 +1030,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const blob = new Blob([dataStr], {type: "application/json"});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `導管物料備份_${new Date().toISOString().slice(0,19)}.json`;
+        a.download = exportFilename('導管物料備份', 'json');
         a.click();
         URL.revokeObjectURL(a.href);
         alert("備份成功");
@@ -920,18 +1058,10 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         saveCurrentPeriod();
         currentPeriodKey = periodKey;
         const periodData = getPeriodData(periodKey);
-        currentStockRows = periodData.stockRows.map((r, i) => ({
-            prevStock: r.prevStock || 0,
-            inbound: r.inbound || 0,
-            used: r.used || 0,
-            returned: r.returned || 0,
-            endStock: r.endStock || 0,
-            locNo: r.locNo != null ? r.locNo : "",
-            expiryDate: r.expiryDate != null ? r.expiryDate : ""
-        }));
+        currentStockRows = periodData.stockRows.map((r) => migrateStockRow(r));
         // ensure length matches models
         while (currentStockRows.length < CATHETER_MODELS.length) {
-            currentStockRows.push({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0, locNo: "", expiryDate: "" });
+            currentStockRows.push(emptyStockRow());
         }
         currentOrders = JSON.parse(JSON.stringify(periodData.orders || []));
         recalcUsageAndReturnFromOrders();
@@ -1267,7 +1397,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const ws = XLSX.utils.aoa_to_sheet(sheetData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "後備物料批次清單");
-        XLSX.writeFile(wb, `後備物料批次_${new Date().toISOString().slice(0,10)}.xlsx`);
+        XLSX.writeFile(wb, exportFilename('後備物料批次', 'xlsx'));
     }
 
     // 備份
@@ -1277,9 +1407,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const now = new Date();
-        const filename = `後備物料批次備份_${now.toISOString().slice(0,19).replace(/:/g, '-')}.json`;
-        a.download = filename;
+        a.download = exportFilename('後備物料批次備份', 'json');
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1591,7 +1719,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const wb = XLSX.utils.book_new();
         const start = document.getElementById('wk_startDate').value, end = document.getElementById('wk_endDate').value;
         XLSX.utils.book_append_sheet(wb, ws, `血透週報_${start}_to_${end}`);
-        XLSX.writeFile(wb, `血液透析週報_${start}_to_${end}.xlsx`);
+        XLSX.writeFile(wb, exportFilename(`血液透析週報_${start}_to_${end}`, 'xlsx'));
     }
 
     // ---------- 每月 / 每年總結 ----------
@@ -1648,7 +1776,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const ws = XLSX.utils.aoa_to_sheet(sheetData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, `每月總結_${monthStr}`);
-        XLSX.writeFile(wb, `血液透析每月總結_${monthStr}.xlsx`);
+        XLSX.writeFile(wb, exportFilename(`血液透析每月總結_${monthStr}`, 'xlsx'));
     }
 
     function exportYearSummary() {
@@ -1678,7 +1806,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const ws = XLSX.utils.aoa_to_sheet(sheetData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, `每年總結_${yearStr}`);
-        XLSX.writeFile(wb, `血液透析每年總結_${yearStr}.xlsx`);
+        XLSX.writeFile(wb, exportFilename(`血液透析每年總結_${yearStr}`, 'xlsx'));
     }
 
     // ---------- 備份還原 ----------
@@ -1689,9 +1817,7 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const now = new Date();
-        const filename = `血透物料備份_${now.toISOString().slice(0,19).replace(/:/g, '-')}.json`;
-        a.download = filename;
+        a.download = exportFilename('血透物料備份', 'json');
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
         alert("備份成功！已匯出 JSON 檔案。");
