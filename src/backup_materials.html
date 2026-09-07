@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>後備物料批次記錄表</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', '微軟正黑體', Roboto, sans-serif;
+            background: #e9f0f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        h1 {
+            font-size: 1.8rem;
+            color: #0066b4;
+            border-left: 6px solid #0066b4;
+            padding-left: 20px;
+            margin-top: 0;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+            align-items: center;
+            background: #f0f7ff;
+            padding: 12px 20px;
+            border-radius: 40px;
+        }
+        .toolbar label, .toolbar span {
+            font-weight: bold;
+            color: #004d80;
+        }
+        button {
+            background: #2c7da0;
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 6px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+        button:hover { background: #1f5e7a; }
+        .btn-add { background: #2c6e2f; }
+        .btn-add:hover { background: #1f5522; }
+        .btn-danger { background: #b85c1a; }
+        .btn-danger:hover { background: #9a4a15; }
+        .btn-backup { background: #2c6e2f; }
+        .btn-restore { background: #b85c1a; }
+        .btn-export { background: #4a6fa5; }
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid #d4dee5;
+            background: #fff;
+            margin: 15px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            min-width: 800px;
+        }
+        th {
+            background: #e3eff9;
+            color: #004070;
+            padding: 12px 8px;
+            border: 1px solid #cbdbe2;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            border: 1px solid #dee2e8;
+            padding: 8px 6px;
+            background-color: #fff;
+        }
+        input, select {
+            width: 100%;
+            border: none;
+            background: #fef9e3;
+            font-size: 13px;
+            padding: 8px;
+            border-radius: 8px;
+            text-align: left;
+        }
+        input:focus, select:focus {
+            background: #fff2cc;
+            outline: 1px solid #2c7da0;
+        }
+        .warning-row {
+            background-color: #ffe6e6 !important;
+        }
+        .warning-row td {
+            background-color: #ffe6e6 !important;
+        }
+        .status-badge {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 12px;
+        }
+        .status-warning {
+            background-color: #ff9999;
+            color: #a10000;
+        }
+        .status-normal {
+            background-color: #c8e6c9;
+            color: #1e5a1e;
+        }
+        .delete-btn {
+            background: #dc3545;
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .delete-btn:hover { background: #b02a37; }
+        .footer-note {
+            font-size: 12px;
+            color: #5e6f8d;
+            margin-top: 20px;
+            background: #f8f9fc;
+            padding: 12px;
+            border-radius: 16px;
+            border-left: 4px solid #2c7da0;
+        }
+        .current-date {
+            margin-left: auto;
+            font-size: 0.9rem;
+        }
+        .group-separator {
+            background-color: #d9e9f5;
+            font-weight: bold;
+        }
+    </style>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>📦 後備物料批次記錄表</h1>
+    <div class="toolbar">
+        <button id="addRowBtn" class="btn-add">➕ 新增批次</button>
+        <button id="sortByExpiryBtn">📅 按有效期排序 (近效期優先)</button>
+        <button id="groupByNameBtn">🔤 依物品名稱分組排序</button>
+        <button id="exportExcelBtn" class="btn-export">📎 匯出 Excel</button>
+        <button id="backupBtn" class="btn-backup">💾 備份全部資料 (JSON)</button>
+        <button id="restoreBtn" class="btn-restore">📂 還原備份</button>
+        <input type="file" id="restoreFileInput" accept=".json" style="display:none;">
+        <span class="current-date" id="todayDate"></span>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="batchTable">
+            <thead>
+                <tr>
+                    <th>物品名稱</th>
+                    <th>規格/批號 (選填)</th>
+                    <th>箱數 (現存量)</th>
+                    <th>有效日期<br>(YYYY-MM-DD)</th>
+                    <th>狀態／提醒</th>
+                    <th style="width:60px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- 動態產生 -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer-note">
+        ✅ 同一物品如有多個不同有效日期的批次，請分別新增多筆記錄，每筆記錄代表一組同效期的箱數。<br>
+        ✅ 當有效日期距離今日 ≤ 270 天 (約9個月) 時，該行會顯示紅色背景及「⚠️ 建議提前使用」，提醒優先使用該批次。<br>
+        ✅ 點擊「依物品名稱分組排序」可將相同物品的批次排列在一起，方便總覽。<br>
+        ✅ 物品名稱已內建常用透析器及 Bloodline 型號下拉選單，亦可手動輸入其他名稱。<br>
+        ✅ 所有資料自動儲存於瀏覽器，請定期使用「備份」功能保存。
+    </div>
+</div>
+
+<script>
+    // ---------- 預定義物品名稱清單 (透析器 + Bloodline) ----------
+    const ITEM_OPTIONS = [
+        "透析器 17G",
+        "透析器 Hi 15",
+        "透析器 Hi 18",
+        "透析器 T400",
+        "透析器 R300",
+        "透析器 R400",
+        "透析器 Fx5",
+        "透析器 Fx80 Classix",
+        "透析器 Fx80 Cordiax",
+        "Bloodline Dialog",
+        "Bloodline Gambro",
+        "Bloodline Artiset",
+        "Bloodline Fresenius"
+    ];
+
+    // 批次資料結構
+    let batchData = [];  // 每個物件 { itemName, spec, qty, expiryDate }
+
+    const STORAGE_KEY = "BackupBatchInventory";
+
+    // 載入資料
+    function loadData() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            batchData = JSON.parse(stored);
+        } else {
+            // 提供一些預設範例批次
+            batchData = [
+                { itemName: "透析器 17G", spec: "批號A123", qty: 5, expiryDate: "2026-12-31" },
+                { itemName: "透析器 17G", spec: "批號B456", qty: 3, expiryDate: "2025-10-20" },
+                { itemName: "Bloodline Dialog", spec: "24套/箱", qty: 8, expiryDate: "2027-03-15" },
+                { itemName: "透析器 Fx80 Classix", spec: "", qty: 2, expiryDate: "2026-01-10" },
+                { itemName: "透析器 T400", spec: "", qty: 4, expiryDate: "2025-08-05" },
+            ];
+            saveData();
+        }
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(batchData));
+    }
+
+    // 計算距離今天的天數
+    function getDaysUntilExpiry(expiryDateStr) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const expiry = new Date(expiryDateStr);
+        if (isNaN(expiry.getTime())) return Infinity;
+        const diffTime = expiry - today;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function isWarning(expiryDateStr) {
+        const days = getDaysUntilExpiry(expiryDateStr);
+        return days <= 270 && days >= 0;
+    }
+
+    function getStatusText(expiryDateStr) {
+        const days = getDaysUntilExpiry(expiryDateStr);
+        if (days < 0) return "❌ 已過期";
+        if (days <= 270) return `⚠️ 剩 ${days} 天 (建議提前使用)`;
+        return "✓ 正常";
+    }
+
+    // 渲染表格，可選擇是否分組 (但排序由外部控制，此處單純顯示)
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        batchData.forEach((item, idx) => {
+            const warning = isWarning(item.expiryDate);
+            const tr = document.createElement('tr');
+            if (warning) tr.classList.add('warning-row');
+
+            // 物品名稱 (下拉選單 + 可手動輸入)
+            const tdName = document.createElement('td');
+            const nameSelect = document.createElement('select');
+            // 加入內建選項
+            ITEM_OPTIONS.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                nameSelect.appendChild(option);
+            });
+            // 允許手動輸入其他名稱 (使用 datalist 概念，但 select 不可輸入，改用 input + datalist 較好)
+            // 為了讓使用者能自訂，改用 input + datalist
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.list = 'itemDatalist';
+            nameInput.value = item.itemName;
+            nameInput.placeholder = "請選擇或輸入物品名稱";
+            nameInput.addEventListener('change', (e) => {
+                item.itemName = e.target.value;
+                saveData();
+            });
+            tdName.appendChild(nameInput);
+            
+            // 規格/批號 (自由文字)
+            const tdSpec = document.createElement('td');
+            const specInput = document.createElement('input');
+            specInput.type = 'text';
+            specInput.value = item.spec || '';
+            specInput.placeholder = "批號/規格 (選填)";
+            specInput.addEventListener('change', (e) => {
+                item.spec = e.target.value;
+                saveData();
+            });
+            tdSpec.appendChild(specInput);
+
+            // 箱數 (現存量)
+            const tdQty = document.createElement('td');
+            const qtyInput = document.createElement('input');
+            qtyInput.type = 'number';
+            qtyInput.value = item.qty;
+            qtyInput.step = '1';
+            qtyInput.min = '0';
+            qtyInput.addEventListener('change', (e) => {
+                let val = parseInt(e.target.value);
+                if (isNaN(val)) val = 0;
+                item.qty = val;
+                saveData();
+            });
+            tdQty.appendChild(qtyInput);
+
+            // 有效日期
+            const tdExpiry = document.createElement('td');
+            const expiryInput = document.createElement('input');
+            expiryInput.type = 'date';
+            expiryInput.value = item.expiryDate;
+            expiryInput.addEventListener('change', (e) => {
+                item.expiryDate = e.target.value;
+                saveData();
+                renderTable(); // 更新狀態
+            });
+            tdExpiry.appendChild(expiryInput);
+
+            // 狀態提醒
+            const tdStatus = document.createElement('td');
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'status-badge';
+            const statusText = getStatusText(item.expiryDate);
+            statusSpan.textContent = statusText;
+            if (isWarning(item.expiryDate)) statusSpan.classList.add('status-warning');
+            else statusSpan.classList.add('status-normal');
+            tdStatus.appendChild(statusSpan);
+
+            // 操作按鈕
+            const tdAction = document.createElement('td');
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '刪除';
+            delBtn.className = 'delete-btn';
+            delBtn.addEventListener('click', () => {
+                if (confirm(`刪除此批次 (${item.itemName} 有效期 ${item.expiryDate}) 嗎？`)) {
+                    batchData.splice(idx, 1);
+                    saveData();
+                    renderTable();
+                }
+            });
+            tdAction.appendChild(delBtn);
+
+            tr.appendChild(tdName);
+            tr.appendChild(tdSpec);
+            tr.appendChild(tdQty);
+            tr.appendChild(tdExpiry);
+            tr.appendChild(tdStatus);
+            tr.appendChild(tdAction);
+            tbody.appendChild(tr);
+        });
+
+        if (batchData.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 6;
+            td.textContent = "尚無批次記錄，請點擊「新增批次」開始記錄。";
+            td.style.textAlign = 'center';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }
+    }
+
+    // 新增空白批次
+    function addBatch() {
+        batchData.push({
+            itemName: ITEM_OPTIONS[0],
+            spec: "",
+            qty: 1,
+            expiryDate: ""
+        });
+        saveData();
+        renderTable();
+        setTimeout(() => {
+            const lastRow = document.querySelector('#tableBody tr:last-child td:first-child input');
+            if (lastRow) lastRow.focus();
+        }, 50);
+    }
+
+    // 按有效期排序 (近效期優先)
+    function sortByExpiry() {
+        batchData.sort((a, b) => {
+            const daysA = getDaysUntilExpiry(a.expiryDate);
+            const daysB = getDaysUntilExpiry(b.expiryDate);
+            if (isNaN(daysA)) return 1;
+            if (isNaN(daysB)) return -1;
+            return daysA - daysB;
+        });
+        saveData();
+        renderTable();
+    }
+
+    // 依物品名稱分組排序 (相同物品排在一起)
+    function groupByName() {
+        batchData.sort((a, b) => {
+            return a.itemName.localeCompare(b.itemName, 'zh');
+        });
+        saveData();
+        renderTable();
+    }
+
+    // 匯出 Excel
+    function exportToExcel() {
+        const sheetData = [["物品名稱", "規格/批號", "箱數(現存量)", "有效日期", "狀態提醒"]];
+        for (const item of batchData) {
+            const status = getStatusText(item.expiryDate);
+            sheetData.push([item.itemName, item.spec || "", item.qty, item.expiryDate, status]);
+        }
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "後備物料批次清單");
+        XLSX.writeFile(wb, `後備物料批次_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // 備份
+    function backupData() {
+        const dataStr = JSON.stringify(batchData, null, 2);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const filename = `後備物料批次備份_${now.toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert("備份成功！");
+    }
+
+    // 還原
+    function restoreFromFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const restored = JSON.parse(e.target.result);
+                if (!Array.isArray(restored)) throw new Error();
+                batchData = restored;
+                saveData();
+                renderTable();
+                alert("還原成功！");
+            } catch (err) {
+                alert("還原失敗，請選擇正確的 JSON 備份檔案。");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // 顯示當前日期
+    function updateTodayDate() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2,'0');
+        const dd = String(today.getDate()).padStart(2,'0');
+        document.getElementById('todayDate').innerHTML = `📅 今日：${yyyy}-${mm}-${dd} (有效期前9個月預警)`;
+    }
+
+    // 初始化 datalist 供物品名稱輸入 (讓下拉建議出現)
+    function initDatalist() {
+        let datalist = document.getElementById('itemDatalist');
+        if (!datalist) {
+            datalist = document.createElement('datalist');
+            datalist.id = 'itemDatalist';
+            document.body.appendChild(datalist);
+        }
+        datalist.innerHTML = '';
+        ITEM_OPTIONS.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            datalist.appendChild(option);
+        });
+    }
+
+    function init() {
+        initDatalist();
+        loadData();
+        renderTable();
+        updateTodayDate();
+
+        document.getElementById('addRowBtn').addEventListener('click', addBatch);
+        document.getElementById('sortByExpiryBtn').addEventListener('click', sortByExpiry);
+        document.getElementById('groupByNameBtn').addEventListener('click', groupByName);
+        document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+        document.getElementById('backupBtn').addEventListener('click', backupData);
+        const restoreFileInput = document.getElementById('restoreFileInput');
+        document.getElementById('restoreBtn').addEventListener('click', () => restoreFileInput.click());
+        restoreFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) restoreFromFile(e.target.files[0]);
+            restoreFileInput.value = '';
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>

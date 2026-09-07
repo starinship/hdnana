@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>血液透析記錄中心</title>
+<style>
+
+:root {
+  --nana-primary: #0066b4;
+  --nana-accent: #2c7da0;
+  --nana-bg: #e9f0f5;
+  --nana-ok: #2c6e2f;
+  --nana-warn: #b85c1a;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', '微軟正黑體', 'Microsoft JhengHei', Roboto, sans-serif;
+  background: var(--nana-bg);
+  margin: 0;
+  padding: 0;
+  color: #1a2a3a;
+}
+.app-shell { max-width: 1700px; margin: 0 auto; padding: 12px 16px 40px; }
+.app-header {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.app-header-top {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+}
+.app-title {
+  font-size: 1.45rem; font-weight: 800; color: var(--nana-primary);
+  border-left: 6px solid var(--nana-primary); padding-left: 14px; margin: 0;
+}
+.chrome-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chrome-actions label { font-weight: bold; color: #004d80; font-size: 0.9rem; }
+.chrome-actions input[type="date"] {
+  padding: 6px 10px; border-radius: 16px; border: 1px solid #ccd; background: #fef9e3;
+}
+.save-status {
+  font-size: 0.85rem; color: #5e6f8d; min-width: 140px;
+}
+.save-status.saved { color: var(--nana-ok); font-weight: 600; }
+.tab-bar {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
+}
+.tab-btn {
+  background: #dfeaf5; border: none; color: #004d80; font-weight: bold;
+  padding: 10px 18px; border-radius: 999px; cursor: pointer; font-size: 0.95rem;
+  transition: 0.15s;
+}
+.tab-btn:hover { background: #c5daf0; }
+.tab-btn.active {
+  background: var(--nana-primary); color: white;
+  box-shadow: 0 4px 12px rgba(0,102,180,0.35);
+}
+.panel {
+  display: none;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  padding: 18px;
+  margin-top: 12px;
+}
+.panel.active { display: block; }
+.panel h2 { color: #0066b4; border-left: 6px solid #0066b4; padding-left: 16px; }
+button, .btn {
+  background: #2c7da0; border: none; color: white; font-weight: bold;
+  padding: 6px 16px; border-radius: 30px; cursor: pointer; font-size: 0.9rem;
+}
+button:hover { background: #1f5e7a; }
+.btn-save { background: #1b7a3d !important; }
+.btn-save:hover { background: #146330 !important; }
+.btn-success, .btn-add, .btn-backup { background: #2c6e2f; }
+.btn-danger, .btn-restore { background: #b85c1a; }
+.btn-secondary { background: #5e6b7c; }
+.btn-export { background: #4a6fa5; }
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0;
+  align-items: center; background: #f0f7ff; padding: 12px 20px; border-radius: 40px;
+}
+.toolbar label, .toolbar span { font-weight: bold; color: #004d80; }
+.table-wrapper {
+  overflow-x: auto; border-radius: 16px; border: 1px solid #d4dee5;
+  background: #fff; margin: 15px 0;
+}
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th {
+  background: #e3eff9; color: #004070; padding: 10px 6px;
+  border: 1px solid #cbdbe2; position: sticky; top: 0; z-index: 1;
+}
+td { border: 1px solid #dee2e8; padding: 6px 4px; background-color: #fff; }
+input, select {
+  width: 100%; border: none; background: #fef9e3; font-size: 12px;
+  padding: 6px; border-radius: 8px; text-align: center;
+}
+input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
+.readonly-cell { background: #f0f7ff; font-weight: bold; text-align: center; }
+.footer-note {
+  font-size: 12px; color: #5e6f8d; margin-top: 20px;
+  background: #f8f9fc; padding: 12px; border-radius: 16px;
+  border-left: 4px solid #2c7da0;
+}
+.notification {
+  background: #fff3cd; border-left: 6px solid #ffc107;
+  padding: 12px 20px; margin-bottom: 20px; border-radius: 12px; font-weight: bold;
+}
+.summary-area, .month-summary {
+  margin-top: 30px; background: #f8fafc; border-radius: 20px;
+  padding: 15px; border: 1px solid #cbd5e1;
+}
+.order-card {
+  background: #fef9e3; border-radius: 16px; padding: 12px;
+  margin-bottom: 20px; border: 1px solid #ffe0a3;
+}
+.flex-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
+.warning-row, .warning-row td { background-color: #ffe6e6 !important; }
+.status-badge { font-weight: bold; padding: 4px 8px; border-radius: 20px; display: inline-block; font-size: 12px; }
+.status-warning { background-color: #ff9999; color: #a10000; }
+.status-normal { background-color: #c8e6c9; color: #1e5a1e; }
+.delete-btn { background: #dc3545; border: none; color: white; padding: 4px 8px; border-radius: 20px; cursor: pointer; font-size: 12px; }
+.delete-btn:hover { background: #b02a37; }
+.current-date { margin-left: auto; font-size: 0.9rem; }
+.sub-header { background: #d9e9f5; font-size: 0.85rem; }
+@media (max-width: 720px) {
+  .app-title { font-size: 1.15rem; }
+  .tab-btn { flex: 1 1 auto; text-align: center; padding: 10px 12px; font-size: 0.85rem; }
+  .toolbar { border-radius: 16px; }
+  table { min-width: 720px; }
+}
+@media print {
+  .app-header, .tab-bar, .chrome-actions, .no-print { display: none !important; }
+  .panel { display: block !important; box-shadow: none; }
+  .panel:not(.active) { display: none !important; }
+  body { background: white; }
+}
+
+</style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <div class="app-header-top">
+      <h1 class="app-title">🩸 血液透析記錄中心</h1>
+      <div class="chrome-actions no-print">
+        <label for="globalDate">📅 參考日期</label>
+        <input type="date" id="globalDate" title="預設為澳門今日；會記住您的選擇">
+        <button type="button" id="btnSave" class="btn-save">💾 儲存</button>
+        <button type="button" id="btnExportAll">📤 匯出全部 JSON</button>
+        <button type="button" id="btnImportAll">📥 匯入全部 JSON</button>
+        <button type="button" id="btnPrint">🖨️ 列印本頁</button>
+        <input type="file" id="importAllInput" accept=".json,application/json" style="display:none">
+        <span id="saveStatus" class="save-status">尚未儲存</span>
+      </div>
+    </div>
+    <nav class="tab-bar no-print" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="catheter" role="tab">導管借用歸還</button>
+      <button type="button" class="tab-btn" data-tab="backup" role="tab">後備物料</button>
+      <button type="button" class="tab-btn" data-tab="weekly" role="tab">每週進出</button>
+    </nav>
+  </header>
+
+  <section id="panel-catheter" class="panel active" role="tabpanel">
+    <h2>🩸 血液透析導管借用／歸還記錄表</h2>
+<div id="cat_pathNotify" class="notification" style="display:none;"></div>
+    <div class="toolbar">
+        <label>📅 記錄區間：</label>
+        <input type="date" id="cat_startDate">
+        <span> 至 </span>
+        <input type="date" id="cat_endDate">
+        <button id="cat_loadPeriodBtn">載入／切換區間</button>
+        <button id="cat_copyPrevStockBtn">📋 複製上期結存至本期期初</button>
+        <button id="cat_resetInOutBtn">🧹 清空本週入庫(保留庫存)</button>
+        <button id="cat_exportStockBtn">📎 匯出本週庫存表</button>
+        <button id="cat_exportUsageDetailBtn">📎 匯出病人領用明細</button>
+        <button id="cat_monthSummaryBtn">📊 每月總結預覽</button>
+        <button id="cat_exportMonthBtn">📎 匯出每月總結</button>
+        <button id="cat_exportYearBtn">📎 匯出每年總結</button>
+        <button id="cat_backupBtn" class="btn-success">💾 備份全部資料</button>
+        <button id="cat_restoreBtn" class="btn-danger">📂 還原備份</button>
+        <input type="file" id="cat_restoreFileInput" accept=".json" style="display:none;">
+    </div>
+
+    <!-- 庫存總表 -->
+    <h2>📦 導管庫存總表 (依型號)</h2>
+    <div class="table-wrapper">
+        <table id="cat_stockTable">
+            <thead>
+                <tr><th>導管型號</th><th>單位</th><th>上週結存(期初)</th><th>本週入庫</th><th>本週實際使用</th><th>本週返貨(歸還)</th><th>本週結存</th></tr>
+                <tr style="background:#f0f8ff"><th colspan="7">⚠️ 操作：手動填寫「上週結存」、「本週入庫」。「實際使用」與「返貨」由下方借用單自動計算。</th></tr>
+            </thead>
+            <tbody id="cat_stockBody"></tbody>
+        </table>
+    </div>
+
+    <!-- 病人領用明細 -->
+    <h2>📋 病人領用明細 (強制記錄長期管/臨時管)</h2>
+    <div class="table-wrapper">
+        <table id="cat_usageDetailTable">
+            <thead>
+                <tr><th>領用日期<br>(手術日)</th><th>病人姓名</th><th>醫療編號</th><th>導管型號</th><th>長期/臨時</th><th>領用數量<br>(實際使用)</th><th>歸還數量</th><th>備註</th></tr>
+                <tr><th colspan="8">⚠️ 本表格自動從下方「手術借用單」產生，記錄每種導管的實際領用量（借出-歸還）。無需手動輸入。</th></tr>
+            </thead>
+            <tbody id="cat_usageDetailBody"></tbody>
+        </table>
+    </div>
+
+    <!-- 手術借用單管理 -->
+    <h2>✂️ 手術借用單管理 (支援多型號借出/歸還，日期最近者顯示在最上方)</h2>
+    <div class="flex-row">
+        <button id="cat_newOrderBtn" class="btn-success">➕ 新增手術借用單</button>
+        <span>✏️ 每張借用單記錄術前借出的多種導管及數量；術後可歸還未使用部分。型號選擇請輸入數字序號。</span>
+    </div>
+    <div id="cat_ordersContainer"></div>
+
+    <!-- 總結預覽區 -->
+    <div id="cat_summaryArea" class="summary-area" style="display:none;">
+        <h3>📊 統計結果預覽</h3>
+        <div id="cat_summaryContent"></div>
+    </div>
+  </section>
+
+  <section id="panel-backup" class="panel" role="tabpanel">
+    <h2>📦 後備物料批次記錄表</h2>
+<div class="toolbar">
+        <button id="bak_addRowBtn" class="btn-add">➕ 新增批次</button>
+        <button id="bak_sortByExpiryBtn">📅 按有效期排序 (近效期優先)</button>
+        <button id="bak_groupByNameBtn">🔤 依物品名稱分組排序</button>
+        <button id="bak_exportExcelBtn" class="btn-export">📎 匯出 Excel</button>
+        <button id="bak_backupBtn" class="btn-backup">💾 備份全部資料 (JSON)</button>
+        <button id="bak_restoreBtn" class="btn-restore">📂 還原備份</button>
+        <input type="file" id="bak_restoreFileInput" accept=".json" style="display:none;">
+        <span class="current-date" id="bak_todayDate"></span>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="bak_batchTable">
+            <thead>
+                <tr>
+                    <th>物品名稱</th>
+                    <th>規格/批號 (選填)</th>
+                    <th>箱數 (現存量)</th>
+                    <th>有效日期<br>(YYYY-MM-DD)</th>
+                    <th>狀態／提醒</th>
+                    <th style="width:60px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="bak_tableBody">
+                <!-- 動態產生 -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer-note">
+        ✅ 同一物品如有多個不同有效日期的批次，請分別新增多筆記錄，每筆記錄代表一組同效期的箱數。<br>
+        ✅ 當有效日期距離今日 ≤ 270 天 (約9個月) 時，該行會顯示紅色背景及「⚠️ 建議提前使用」，提醒優先使用該批次。<br>
+        ✅ 點擊「依物品名稱分組排序」可將相同物品的批次排列在一起，方便總覽。<br>
+        ✅ 物品名稱已內建常用透析器及 Bloodline 型號下拉選單，亦可手動輸入其他名稱。<br>
+        ✅ 所有資料自動儲存於瀏覽器，請定期使用「備份」功能保存。
+    </div>
+  </section>
+
+  <section id="panel-weekly" class="panel" role="tabpanel">
+    <h2>🩸 血液透析專用物品 · 每週進出記錄表</h2>
+<div id="wk_pathNotify" class="notification" style="display:none;"></div>
+    <div class="toolbar">
+        <label>📅 記錄區間：</label>
+        <input type="date" id="wk_startDate">
+        <span> 至 </span>
+        <input type="date" id="wk_endDate">
+        <button id="wk_loadPeriodBtn">載入／切換區間</button>
+        <button id="wk_copyPrevPeriodBtn">📋 複製上一區間結存</button>
+        <button id="wk_clearInputsBtn">🧹 清空領用/返貨</button>
+        <button id="wk_exportBtn">📎 匯出本區間 Excel</button>
+        <button id="wk_monthSummaryBtn">📊 每月總結預覽</button>
+        <button id="wk_exportMonthSummaryBtn">📎 匯出每月總結</button>
+        <button id="wk_exportYearSummaryBtn">📎 匯出每年總結</button>
+        <button id="wk_backupBtn" class="btn-backup">💾 備份全部資料 (JSON)</button>
+        <button id="wk_restoreBtn" class="btn-restore">📂 還原備份</button>
+        <input type="file" id="wk_restoreFileInput" accept=".json" style="display:none;">
+    </div>
+
+    <div class="table-wrapper">
+        <table id="wk_stockTable">
+            <thead>
+                <tr><th rowspan="2">物品代碼</th><th rowspan="2">物品名稱</th><th rowspan="2">單位</th><th rowspan="2">上週結存(期初)</th>
+                    <th colspan="6">本週領用</th>
+                    <th rowspan="2">本週返貨<br>+</th><th rowspan="2">本週結存<br>(自動)</th>
+                 </tr>
+                <tr class="sub-header">
+                    <th>1室</th><th>2室</th><th>3室</th><th>4室</th><th>其他科借用</th><th>總領用</th>
+                </tr>
+                <tr style="background:#f0f8ff">
+                    <th colspan="12" style="text-align:left">⚠️ 操作說明：填寫各室領用量及返貨，「總領用」與「本週結存」自動計算。系統會自動記住您最後使用的區間，下次開啟時直接載入。</th>
+                </tr>
+            </thead>
+            <tbody id="wk_tableBody"></tbody>
+        </table>
+    </div>
+
+    <div id="wk_monthSummaryArea" class="month-summary" style="display:none;">
+        <h3>📆 每月總結 (預覽)</h3>
+        <div class="summary-table" id="wk_monthSummaryTable"></div>
+    </div>
+
+    <div class="footer-note">
+        ✅ 所有資料僅儲存在您「瀏覽器的本機資料庫(localStorage)」，絕不上傳，請放心使用。<br>
+        ✅ 每週記錄完畢請務必點「匯出本區間 Excel」備份。切換區間前系統會自動儲存當前資料。<br>
+        ✅ 關閉網頁時會自動記住您最後使用的記錄區間，下次開啟會直接載入該區間。<br>
+        ✅ 若您將 HTML 檔案移到新位置（例如 USB 隨身碟），請使用「💾 備份全部資料」匯出 JSON，再於新位置使用「📂 還原備份」恢復資料。<br>
+        ✅ 領用總量 = 1室+2室+3室+4室+其他科借用；結存 = 上週結存 - 總領用 + 返貨 (負值歸零)。
+    </div>
+  </section>
+</div>
+
+<script>
+/* Shared utilities & chrome */
+(function() {
+  const TZ = 'Asia/Macau';
+  const LS_GLOBAL_DATE = 'nana_globalDate';
+  const LS_ACTIVE_TAB = 'nana_activeTab';
+  const LS_SAVED_AT = 'nana_lastSavedAt';
+
+  function todayMacau() {
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+      const y = parts.find(p => p.type === 'year').value;
+      const m = parts.find(p => p.type === 'month').value;
+      const d = parts.find(p => p.type === 'day').value;
+      return `${y}-${m}-${d}`;
+    } catch (e) {
+      const n = new Date();
+      return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+    }
+  }
+
+  function formatSavedTime(iso) {
+    if (!iso) return '尚未儲存';
+    try {
+      const d = new Date(iso);
+      return '已儲存 ' + d.toLocaleString('zh-HK', { timeZone: TZ, hour12: false });
+    } catch (e) {
+      return '已儲存';
+    }
+  }
+
+  window.__nanaMarkSaved = function(module) {
+    const now = new Date().toISOString();
+    localStorage.setItem(LS_SAVED_AT, now);
+    const el = document.getElementById('saveStatus');
+    if (el) {
+      el.textContent = formatSavedTime(now) + (module ? `（${module}）` : '');
+      el.classList.add('saved');
+    }
+  };
+
+  function refreshSaveStatus() {
+    const el = document.getElementById('saveStatus');
+    const iso = localStorage.getItem(LS_SAVED_AT);
+    if (el) {
+      el.textContent = formatSavedTime(iso);
+      if (iso) el.classList.add('saved');
+    }
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    localStorage.setItem(LS_ACTIVE_TAB, name);
+  }
+
+  function manualSave() {
+    const active = document.querySelector('.tab-btn.active');
+    const tab = active ? active.dataset.tab : 'catheter';
+    if (tab === 'catheter' && window.__nanaSave_catheter) window.__nanaSave_catheter();
+    else if (tab === 'backup' && window.__nanaSave_backup) window.__nanaSave_backup();
+    else if (tab === 'weekly' && window.__nanaSave_weekly) window.__nanaSave_weekly();
+    // Also save all modules for safety
+    if (window.__nanaSave_catheter) window.__nanaSave_catheter();
+    if (window.__nanaSave_backup) window.__nanaSave_backup();
+    if (window.__nanaSave_weekly) window.__nanaSave_weekly();
+    window.__nanaMarkSaved('全部');
+    const btn = document.getElementById('btnSave');
+    if (btn) {
+      const old = btn.textContent;
+      btn.textContent = '✅ 已儲存';
+      setTimeout(() => btn.textContent = old, 1200);
+    }
+  }
+
+  function exportAll() {
+    if (window.__nanaSave_catheter) window.__nanaSave_catheter();
+    if (window.__nanaSave_backup) window.__nanaSave_backup();
+    if (window.__nanaSave_weekly) window.__nanaSave_weekly();
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      globalDate: document.getElementById('globalDate').value,
+      catheter: JSON.parse(localStorage.getItem('CatheterBorrowData_v2') || '{}'),
+      catheterDates: {
+        start: localStorage.getItem('lastCatheterStart'),
+        end: localStorage.getItem('lastCatheterEnd')
+      },
+      backup: JSON.parse(localStorage.getItem('BackupBatchInventory') || '[]'),
+      weekly: JSON.parse(localStorage.getItem('HD_PeriodsData_v2') || '{}'),
+      weeklyDates: {
+        start: localStorage.getItem('lastUsedStartDate'),
+        end: localStorage.getItem('lastUsedEndDate')
+      }
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `血液透析記錄中心備份_${todayMacau()}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    window.__nanaMarkSaved('匯出');
+    alert('已匯出全部模組 JSON 備份。');
+  }
+
+  function importAll(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.catheter) localStorage.setItem('CatheterBorrowData_v2', JSON.stringify(data.catheter));
+        if (data.backup) localStorage.setItem('BackupBatchInventory', JSON.stringify(data.backup));
+        if (data.weekly) localStorage.setItem('HD_PeriodsData_v2', JSON.stringify(data.weekly));
+        if (data.catheterDates) {
+          if (data.catheterDates.start) localStorage.setItem('lastCatheterStart', data.catheterDates.start);
+          if (data.catheterDates.end) localStorage.setItem('lastCatheterEnd', data.catheterDates.end);
+        }
+        if (data.weeklyDates) {
+          if (data.weeklyDates.start) localStorage.setItem('lastUsedStartDate', data.weeklyDates.start);
+          if (data.weeklyDates.end) localStorage.setItem('lastUsedEndDate', data.weeklyDates.end);
+        }
+        if (data.globalDate) {
+          localStorage.setItem(LS_GLOBAL_DATE, data.globalDate);
+          document.getElementById('globalDate').value = data.globalDate;
+        }
+        alert('匯入成功！頁面將重新載入以套用資料。');
+        location.reload();
+      } catch (err) {
+        alert('匯入失敗：請確認為本中心匯出的 JSON 備份。');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Global date: default once to Macau today, persist forever unless user changes
+    const g = document.getElementById('globalDate');
+    let saved = localStorage.getItem(LS_GLOBAL_DATE);
+    if (!saved) {
+      saved = todayMacau();
+      localStorage.setItem(LS_GLOBAL_DATE, saved);
+    }
+    g.value = saved;
+    g.addEventListener('change', function() {
+      // Never overwrite unless user changes — only persist their choice
+      localStorage.setItem(LS_GLOBAL_DATE, g.value);
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+    const lastTab = localStorage.getItem(LS_ACTIVE_TAB) || 'catheter';
+    switchTab(lastTab);
+
+    document.getElementById('btnSave').addEventListener('click', manualSave);
+    document.getElementById('btnExportAll').addEventListener('click', exportAll);
+    document.getElementById('btnImportAll').addEventListener('click', () => document.getElementById('importAllInput').click());
+    document.getElementById('importAllInput').addEventListener('change', e => {
+      if (e.target.files.length) importAll(e.target.files[0]);
+      e.target.value = '';
+    });
+    document.getElementById('btnPrint').addEventListener('click', () => window.print());
+
+    refreshSaveStatus();
+
+    // Init modules
+    if (window.__nanaInit_catheter) window.__nanaInit_catheter();
+    if (window.__nanaInit_backup) window.__nanaInit_backup();
+    if (window.__nanaInit_weekly) window.__nanaInit_weekly();
+  });
+})();
+</script>
+
+
+<script>
+(function() {
+
+    function __fmtLocalDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth()+1).padStart(2,'0');
+        const day = String(d.getDate()).padStart(2,'0');
+        return `${y}-${m}-${day}`;
+    }
+
+
+    // ----- 導管型號清單 (長期管/臨時管自動標記) -----
+    const CATHETER_MODELS = [
+        { name: "長期血透導管 33x50cm", unit: "條", type: "長期管" },
+        { name: "長期血透導管 28x45cm", unit: "條", type: "長期管" },
+        { name: "長期血透導管 23x40cm", unit: "條", type: "長期管" },
+        { name: "長期血透導管 55x72cm", unit: "條", type: "長期管" },
+        { name: "頸靜脈導管 (直管)", unit: "條", type: "臨時管" },
+        { name: "頸靜脈導管 (彎管) 13cm", unit: "條", type: "臨時管" },
+        { name: "頸靜脈導管 (彎管) 16cm", unit: "條", type: "臨時管" },
+        { name: "腹股溝導管", unit: "條", type: "臨時管" },
+        { name: "三腔導管", unit: "條", type: "臨時管" }
+    ];
+
+    let allPeriodsData = {};
+    let currentPeriodKey = "";
+    let currentStockRows = [];
+    let currentOrders = [];
+
+    function getPeriodKey(start, end) { return `${start}_to_${end}`; }
+    function loadAllData() {
+        const stored = localStorage.getItem("CatheterBorrowData_v2");
+        if (stored) allPeriodsData = JSON.parse(stored);
+        else allPeriodsData = {};
+    }
+    function saveAllData() { localStorage.setItem("CatheterBorrowData_v2", JSON.stringify(allPeriodsData)); if (window.__nanaMarkSaved) window.__nanaMarkSaved("catheter"); }
+
+    function getPeriodData(periodKey) {
+        if (!allPeriodsData[periodKey]) {
+            const stockRows = CATHETER_MODELS.map(() => ({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0 }));
+            allPeriodsData[periodKey] = { stockRows: stockRows, orders: [] };
+        }
+        return allPeriodsData[periodKey];
+    }
+
+    function saveCurrentPeriod() {
+        if (!currentPeriodKey) return;
+        const periodData = getPeriodData(currentPeriodKey);
+        periodData.stockRows = currentStockRows.map(r => ({ ...r }));
+        periodData.orders = JSON.parse(JSON.stringify(currentOrders));
+        allPeriodsData[currentPeriodKey] = periodData;
+        saveAllData();
+    }
+
+    function recalcUsageAndReturnFromOrders() {
+        const totalBorrowed = new Array(CATHETER_MODELS.length).fill(0);
+        const totalReturned = new Array(CATHETER_MODELS.length).fill(0);
+        for (const order of currentOrders) {
+            for (let item of order.borrowed) {
+                const idx = CATHETER_MODELS.findIndex(m => m.name === item.model);
+                if (idx !== -1) totalBorrowed[idx] += item.qty;
+            }
+            if (order.returned && order.returned.length) {
+                for (let ret of order.returned) {
+                    const idx = CATHETER_MODELS.findIndex(m => m.name === ret.model);
+                    if (idx !== -1) totalReturned[idx] += ret.qty;
+                }
+            }
+        }
+        for (let i = 0; i < CATHETER_MODELS.length; i++) {
+            currentStockRows[i].used = totalBorrowed[i] - totalReturned[i];
+            if (currentStockRows[i].used < 0) currentStockRows[i].used = 0;
+            currentStockRows[i].returned = totalReturned[i];
+            currentStockRows[i].endStock = calcEndStock(currentStockRows[i].prevStock, currentStockRows[i].inbound, currentStockRows[i].used, currentStockRows[i].returned);
+        }
+    }
+
+    function calcEndStock(prev, inbound, used, returned) {
+        let end = prev + inbound - used + returned;
+        return end < 0 ? 0 : end;
+    }
+
+    function renderStockTable() {
+        const tbody = document.getElementById('cat_stockBody');
+        tbody.innerHTML = '';
+        for (let i = 0; i < CATHETER_MODELS.length; i++) {
+            const model = CATHETER_MODELS[i];
+            const row = currentStockRows[i];
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${model.name}${model.type ? ` (${model.type})` : ''}</td>
+                <td>${model.unit}</td>
+                <td><input type="number" class="prevStock" data-idx="${i}" value="${row.prevStock}"></td>
+                <td><input type="number" class="inbound" data-idx="${i}" value="${row.inbound}"></td>
+                <td class="readonly-cell usedCell">${row.used}</td>
+                <td class="readonly-cell returnedCell">${row.returned}</td>
+                <td class="readonly-cell endStockCell">${row.endStock}</td>
+            `;
+            tbody.appendChild(tr);
+        }
+        document.querySelectorAll('.prevStock, .inbound').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                const idx = parseInt(e.target.dataset.idx);
+                const val = parseFloat(e.target.value) || 0;
+                if (e.target.classList.contains('prevStock')) currentStockRows[idx].prevStock = val;
+                else if (e.target.classList.contains('inbound')) currentStockRows[idx].inbound = val;
+                recalcUsageAndReturnFromOrders();
+                renderStockTable();
+                renderUsageDetailTable();
+                saveCurrentPeriod();
+            });
+        });
+    }
+
+    function renderUsageDetailTable() {
+        const tbody = document.getElementById('cat_usageDetailBody');
+        tbody.innerHTML = '';
+        for (const order of currentOrders) {
+            for (const borrow of order.borrowed) {
+                const modelObj = CATHETER_MODELS.find(m => m.name === borrow.model);
+                if (!modelObj) continue;
+                const returnedItem = order.returned.find(r => r.model === borrow.model);
+                const returnQty = returnedItem ? returnedItem.qty : 0;
+                const actualUsed = borrow.qty - returnQty;
+                if (actualUsed === 0 && returnQty === borrow.qty) continue;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${order.surgeryDate}</td>
+                    <td>${order.patientName}</td>
+                    <td>${order.patientId}</td>
+                    <td>${borrow.model}</td>
+                    <td>${modelObj.type}</td>
+                    <td>${actualUsed}</td>
+                    <td>${returnQty}</td>
+                    <td>${actualUsed > 0 ? '實際使用' : (returnQty > 0 ? '全數歸還' : '')}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+        if (currentOrders.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="8" style="text-align:center;">尚無借用單記錄，請點擊上方「新增手術借用單」</td>';
+            tbody.appendChild(tr);
+        }
+    }
+
+    function renderOrders() {
+        currentOrders.sort((a, b) => b.surgeryDate.localeCompare(a.surgeryDate));
+        const container = document.getElementById('cat_ordersContainer');
+        container.innerHTML = '';
+        for (let idx = 0; idx < currentOrders.length; idx++) {
+            const order = currentOrders[idx];
+            const div = document.createElement('div');
+            div.className = 'order-card';
+            let html = `<div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong>📄 手術借用單 #${idx+1}</strong>
+                <div><button class="deleteOrderBtn" data-idx="${idx}" style="background:#b85c1a;">🗑️ 刪除整單</button></div>
+            </div>`;
+            html += `<div><span>病人：${order.patientName} (${order.patientId})</span> | <span>手術日期：${order.surgeryDate}</span></div>`;
+            html += `<h4 style="margin:10px 0 5px 0;">✈️ 術前借出導管</h4>
+            <table style="width:100%;"><thead><tr><th>型號</th><th>借出數量</th><th>操作</th></tr></thead><tbody>`;
+            for (let bIdx = 0; bIdx < order.borrowed.length; bIdx++) {
+                const b = order.borrowed[bIdx];
+                html += `<tr>
+                    <td>${b.model}</td>
+                    <td><input type="number" class="borrowedQty" data-order="${idx}" data-bidx="${bIdx}" value="${b.qty}" style="width:80px;"></td>
+                    <td><button class="removeBorrowedBtn" data-order="${idx}" data-bidx="${bIdx}">❌ 刪除此項</button></td>
+                </tr>`;
+            }
+            html += `<tr><td colspan="3"><button class="addBorrowedBtn" data-order="${idx}">➕ 增加借出型號</button></td></tr>`;
+            html += `</tbody></table>`;
+            html += `<h4 style="margin:10px 0 5px 0;">🔄 術後歸還導管 (未使用)</h4>
+            <table style="width:100%;"><thead><tr><th>型號</th><th>歸還數量</th><th>操作</th></tr></thead><tbody>`;
+            if (order.returned && order.returned.length) {
+                for (let rIdx = 0; rIdx < order.returned.length; rIdx++) {
+                    const r = order.returned[rIdx];
+                    html += `<tr>
+                        <td>${r.model}</td>
+                        <td><input type="number" class="returnedQty" data-order="${idx}" data-ridx="${rIdx}" value="${r.qty}" style="width:80px;"></td>
+                        <td><button class="removeReturnedBtn" data-order="${idx}" data-ridx="${rIdx}">❌ 刪除此項</button></td>
+                    </tr>`;
+                }
+            }
+            html += `<tr><td colspan="3"><button class="addReturnedBtn" data-order="${idx}">➕ 增加歸還型號</button></td></tr>`;
+            html += `</tbody></table>`;
+            div.innerHTML = html;
+            container.appendChild(div);
+        }
+        attachOrderEvents();
+        recalcUsageAndReturnFromOrders();
+        renderStockTable();
+        renderUsageDetailTable();
+        saveCurrentPeriod();
+    }
+
+    function attachOrderEvents() {
+        document.querySelectorAll('.deleteOrderBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(btn.dataset.idx);
+                if (confirm('刪除此借用單，所有借出歸還記錄將消失？')) {
+                    currentOrders.splice(idx, 1);
+                    renderOrders();
+                }
+            });
+        });
+        document.querySelectorAll('.borrowedQty').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                const orderIdx = parseInt(inp.dataset.order);
+                const bIdx = parseInt(inp.dataset.bidx);
+                const newVal = parseInt(inp.value) || 0;
+                if (currentOrders[orderIdx] && currentOrders[orderIdx].borrowed[bIdx]) {
+                    currentOrders[orderIdx].borrowed[bIdx].qty = newVal;
+                    recalcUsageAndReturnFromOrders();
+                    renderStockTable();
+                    renderUsageDetailTable();
+                    saveCurrentPeriod();
+                }
+            });
+        });
+        document.querySelectorAll('.returnedQty').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                const orderIdx = parseInt(inp.dataset.order);
+                const rIdx = parseInt(inp.dataset.ridx);
+                const newVal = parseInt(inp.value) || 0;
+                if (currentOrders[orderIdx] && currentOrders[orderIdx].returned[rIdx]) {
+                    currentOrders[orderIdx].returned[rIdx].qty = newVal;
+                    recalcUsageAndReturnFromOrders();
+                    renderStockTable();
+                    renderUsageDetailTable();
+                    saveCurrentPeriod();
+                }
+            });
+        });
+        document.querySelectorAll('.removeBorrowedBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const orderIdx = parseInt(btn.dataset.order);
+                const bIdx = parseInt(btn.dataset.bidx);
+                currentOrders[orderIdx].borrowed.splice(bIdx, 1);
+                renderOrders();
+            });
+        });
+        document.querySelectorAll('.removeReturnedBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const orderIdx = parseInt(btn.dataset.order);
+                const rIdx = parseInt(btn.dataset.ridx);
+                currentOrders[orderIdx].returned.splice(rIdx, 1);
+                renderOrders();
+            });
+        });
+        document.querySelectorAll('.addBorrowedBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const orderIdx = parseInt(btn.dataset.order);
+                let modelListStr = "";
+                CATHETER_MODELS.forEach((m, i) => { modelListStr += `${i+1}. ${m.name} (${m.type})\n`; });
+                const input = prompt(`請輸入數字選擇借出型號：\n${modelListStr}\n請輸入數字 (1-${CATHETER_MODELS.length})`);
+                if (!input) return;
+                const num = parseInt(input);
+                if (isNaN(num) || num < 1 || num > CATHETER_MODELS.length) { alert("無效數字"); return; }
+                const model = CATHETER_MODELS[num-1].name;
+                const qty = parseInt(prompt("借出數量：", "1")) || 1;
+                currentOrders[orderIdx].borrowed.push({ model, qty });
+                renderOrders();
+            });
+        });
+        document.querySelectorAll('.addReturnedBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const orderIdx = parseInt(btn.dataset.order);
+                let modelListStr = "";
+                CATHETER_MODELS.forEach((m, i) => { modelListStr += `${i+1}. ${m.name} (${m.type})\n`; });
+                const input = prompt(`請輸入數字選擇歸還型號：\n${modelListStr}\n請輸入數字 (1-${CATHETER_MODELS.length})`);
+                if (!input) return;
+                const num = parseInt(input);
+                if (isNaN(num) || num < 1 || num > CATHETER_MODELS.length) { alert("無效數字"); return; }
+                const model = CATHETER_MODELS[num-1].name;
+                const qty = parseInt(prompt("歸還數量：", "1")) || 1;
+                if (!currentOrders[orderIdx].returned) currentOrders[orderIdx].returned = [];
+                currentOrders[orderIdx].returned.push({ model, qty });
+                renderOrders();
+            });
+        });
+    }
+
+    function newOrder() {
+        const patientName = prompt("病人姓名：");
+        if (!patientName) return;
+        const patientId = prompt("醫療編號：");
+        if (!patientId) return;
+        const surgeryDate = prompt("手術日期 (YYYY-MM-DD)：", new Date().toISOString().slice(0,10));
+        if (!surgeryDate) return;
+        let modelListStr = "";
+        CATHETER_MODELS.forEach((m, i) => { modelListStr += `${i+1}. ${m.name} (${m.type})\n`; });
+        const input = prompt(`請輸入數字選擇第一項借出導管型號：\n${modelListStr}\n請輸入數字 (1-${CATHETER_MODELS.length})`);
+        if (!input) return;
+        const num = parseInt(input);
+        if (isNaN(num) || num < 1 || num > CATHETER_MODELS.length) { alert("無效數字"); return; }
+        const model = CATHETER_MODELS[num-1].name;
+        const qty = parseInt(prompt("借出數量：", "1")) || 1;
+        const borrowed = [{ model, qty }];
+        const newOrderObj = { patientName, patientId, surgeryDate, borrowed, returned: [] };
+        currentOrders.push(newOrderObj);
+        renderOrders();
+    }
+
+    function copyPrevPeriodStock() {
+        const startDate = document.getElementById('cat_startDate').value;
+        if (!startDate) return;
+        const currentStart = new Date(startDate);
+        let prevPeriodKey = null, prevEndDate = null;
+        for (const key in allPeriodsData) {
+            const [s, e] = key.split('_to_');
+            const endDateObj = new Date(e);
+            if (endDateObj < currentStart) {
+                if (!prevEndDate || endDateObj > new Date(prevEndDate)) { prevEndDate = e; prevPeriodKey = key; }
+            }
+        }
+        if (!prevPeriodKey) { alert("未找到上一區間資料"); return; }
+        const prevData = allPeriodsData[prevPeriodKey];
+        for (let i = 0; i < CATHETER_MODELS.length; i++) {
+            currentStockRows[i].prevStock = prevData.stockRows[i].endStock;
+            currentStockRows[i].inbound = 0;
+        }
+        recalcUsageAndReturnFromOrders();
+        renderStockTable();
+        renderUsageDetailTable();
+        saveCurrentPeriod();
+        alert("已複製上期結存作為本期期初，並清空本週入庫。");
+    }
+
+    function clearInOut() {
+        for (let i = 0; i < currentStockRows.length; i++) currentStockRows[i].inbound = 0;
+        recalcUsageAndReturnFromOrders();
+        renderStockTable();
+        renderUsageDetailTable();
+        saveCurrentPeriod();
+    }
+
+    function exportStockExcel() {
+        const sheetData = [["導管型號","單位","上週結存(期初)","本週入庫","本週實際使用","本週返貨(歸還)","本週結存"]];
+        for (let i=0; i<CATHETER_MODELS.length; i++) {
+            const m = CATHETER_MODELS[i];
+            const r = currentStockRows[i];
+            sheetData.push([m.name, m.unit, r.prevStock, r.inbound, r.used, r.returned, r.endStock]);
+        }
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `庫存_${currentPeriodKey}`);
+        XLSX.writeFile(wb, `導管庫存_${currentPeriodKey}.xlsx`);
+    }
+
+    function exportUsageDetailExcel() {
+        const sheetData = [["領用日期","病人姓名","醫療編號","導管型號","長期/臨時","領用數量(實際使用)","歸還數量","備註"]];
+        for (const order of currentOrders) {
+            for (const borrow of order.borrowed) {
+                const modelObj = CATHETER_MODELS.find(m => m.name === borrow.model);
+                if (!modelObj) continue;
+                const returnedItem = order.returned.find(r => r.model === borrow.model);
+                const returnQty = returnedItem ? returnedItem.qty : 0;
+                const actualUsed = borrow.qty - returnQty;
+                if (actualUsed === 0 && returnQty === borrow.qty) continue;
+                sheetData.push([
+                    order.surgeryDate, order.patientName, order.patientId, borrow.model,
+                    modelObj.type, actualUsed, returnQty,
+                    actualUsed > 0 ? '實際使用' : (returnQty > 0 ? '全數歸還' : '')
+                ]);
+            }
+        }
+        if (sheetData.length === 1) sheetData.push(["尚無借用單記錄"]);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `病人領用明細_${currentPeriodKey}`);
+        XLSX.writeFile(wb, `病人領用明細_${currentPeriodKey}.xlsx`);
+    }
+
+    function getMonthSummaryData(monthStr) {
+        const [year, month] = monthStr.split('-');
+        if (!year || !month) { alert("格式錯誤"); return null; }
+        const targetYear = parseInt(year), targetMonth = parseInt(month);
+        const periods = [];
+        for (const key in allPeriodsData) {
+            const [s, e] = key.split('_to_');
+            const endDate = new Date(e);
+            if (endDate.getFullYear() === targetYear && endDate.getMonth()+1 === targetMonth) {
+                periods.push({ key, endDate, data: allPeriodsData[key] });
+            }
+        }
+        if (periods.length === 0) { alert(`無 ${monthStr} 資料`); return null; }
+        periods.sort((a,b)=>a.endDate - b.endDate);
+        const summary = CATHETER_MODELS.map((model, idx) => {
+            let totalInbound = 0, totalUsed = 0, totalReturned = 0, lastEnd = 0;
+            for (let p of periods) {
+                const row = p.data.stockRows[idx];
+                totalInbound += row.inbound;
+                totalUsed += row.used;
+                totalReturned += row.returned;
+                lastEnd = row.endStock;
+            }
+            return { name: model.name, unit: model.unit, totalInbound, totalUsed, totalReturned, lastEnd };
+        });
+        return { summary, periodsCount: periods.length };
+    }
+
+    function showMonthSummary() {
+        const monthStr = prompt("輸入月份 (YYYY-MM)：", "2026-05");
+        if (!monthStr) return;
+        const res = getMonthSummaryData(monthStr);
+        if (!res) return;
+        let html = `<h4>${monthStr} 總結 (共 ${res.periodsCount} 個週期)</h4><table border="1"><thead><tr><th>導管型號</th><th>單位</th><th>總入庫</th><th>總實際使用</th><th>總返貨</th><th>月底結存</th></tr></thead><tbody>`;
+        for (const s of res.summary) {
+            html += `<tr><td>${s.name}</td><td>${s.unit}</td><td>${s.totalInbound}</td><td>${s.totalUsed}</td><td>${s.totalReturned}</td><td><strong>${s.lastEnd}</strong></td></tr>`;
+        }
+        html += `</tbody></table>`;
+        document.getElementById('cat_summaryContent').innerHTML = html;
+        document.getElementById('cat_summaryArea').style.display = 'block';
+    }
+
+    function exportMonthSummary() {
+        const monthStr = prompt("匯出月份 (YYYY-MM)：", "2026-05");
+        if (!monthStr) return;
+        const res = getMonthSummaryData(monthStr);
+        if (!res) return;
+        const sheetData = [["導管型號","單位","總入庫","總實際使用","總返貨","月底結存"]];
+        for (const s of res.summary) sheetData.push([s.name, s.unit, s.totalInbound, s.totalUsed, s.totalReturned, s.lastEnd]);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `每月總結_${monthStr}`);
+        XLSX.writeFile(wb, `導管每月總結_${monthStr}.xlsx`);
+    }
+
+    function exportYearSummary() {
+        const yearStr = prompt("匯出年份 (YYYY)：", "2026");
+        if (!yearStr) return;
+        const targetYear = parseInt(yearStr);
+        const periodsInYear = [];
+        for (const key in allPeriodsData) {
+            const [s, e] = key.split('_to_');
+            const endDate = new Date(e);
+            if (endDate.getFullYear() === targetYear) periodsInYear.push({ key, endDate, data: allPeriodsData[key] });
+        }
+        if (periodsInYear.length === 0) { alert(`無 ${yearStr} 資料`); return; }
+        periodsInYear.sort((a,b)=>a.endDate - b.endDate);
+        const summary = CATHETER_MODELS.map((model, idx) => {
+            let totalInbound = 0, totalUsed = 0, totalReturned = 0, lastEnd = 0;
+            for (let p of periodsInYear) {
+                const row = p.data.stockRows[idx];
+                totalInbound += row.inbound;
+                totalUsed += row.used;
+                totalReturned += row.returned;
+                lastEnd = row.endStock;
+            }
+            return { name: model.name, unit: model.unit, totalInbound, totalUsed, totalReturned, lastEnd };
+        });
+        const sheetData = [["導管型號","單位","全年總入庫","全年總實際使用","全年總返貨","年底結存"]];
+        for (const s of summary) sheetData.push([s.name, s.unit, s.totalInbound, s.totalUsed, s.totalReturned, s.lastEnd]);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `每年總結_${yearStr}`);
+        XLSX.writeFile(wb, `導管每年總結_${yearStr}.xlsx`);
+    }
+
+    function backupAll() {
+        saveCurrentPeriod();
+        const dataStr = JSON.stringify(allPeriodsData, null, 2);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `導管物料備份_${new Date().toISOString().slice(0,19)}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        alert("備份成功");
+    }
+
+    function restoreFromFile(file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const restored = JSON.parse(e.target.result);
+                allPeriodsData = restored;
+                saveAllData();
+                const start = document.getElementById('cat_startDate').value;
+                const end = document.getElementById('cat_endDate').value;
+                const periodKey = getPeriodKey(start, end);
+                loadPeriod(periodKey, start, end);
+                alert("還原成功");
+                document.getElementById('cat_pathNotify').style.display = 'none';
+            } catch(err) { alert("還原失敗，檔案格式錯誤"); }
+        };
+        reader.readAsText(file);
+    }
+
+    function loadPeriod(periodKey, startDate, endDate) {
+        saveCurrentPeriod();
+        currentPeriodKey = periodKey;
+        const periodData = getPeriodData(periodKey);
+        currentStockRows = periodData.stockRows.map(r => ({ ...r }));
+        currentOrders = JSON.parse(JSON.stringify(periodData.orders || []));
+        recalcUsageAndReturnFromOrders();
+        renderStockTable();
+        renderUsageDetailTable();
+        renderOrders();
+        document.getElementById('cat_startDate').value = startDate;
+        document.getElementById('cat_endDate').value = endDate;
+        saveLastUsedInterval(startDate, endDate);
+    }
+
+    function saveLastUsedInterval(start, end) {
+        localStorage.setItem("lastCatheterStart", start);
+        localStorage.setItem("lastCatheterEnd", end);
+    }
+
+    function initDateRange() {
+        const lastStart = localStorage.getItem("lastCatheterStart");
+        const lastEnd = localStorage.getItem("lastCatheterEnd");
+        if (lastStart && lastEnd && !isNaN(new Date(lastStart)) && !isNaN(new Date(lastEnd))) {
+            document.getElementById('cat_startDate').value = lastStart;
+            document.getElementById('cat_endDate').value = lastEnd;
+            return;
+        }
+        const today = new Date();
+        const day = today.getDay();
+        let thursday = new Date(today);
+        if (day <= 4) thursday.setDate(today.getDate() + (4-day));
+        else thursday.setDate(today.getDate() + (4+7-day));
+        const friday = new Date(thursday);
+        friday.setDate(thursday.getDate() - 6);
+        const fmt = __fmtLocalDate;
+        document.getElementById('cat_startDate').value = fmt(friday);
+        document.getElementById('cat_endDate').value = fmt(thursday);
+    }
+
+    // 檢查是否有資料，若無則提示可能為路徑變更並建議還原
+    function checkDataAndNotify() {
+        // 檢查 localStorage 中是否有任何週期資料
+        const hasAnyData = Object.keys(allPeriodsData).length > 0;
+        if (!hasAnyData) {
+            const notifyDiv = document.getElementById('cat_pathNotify');
+            notifyDiv.innerHTML = `⚠️ 偵測到目前為新環境或檔案位置可能已移動，先前儲存的資料不會自動轉移。<br>
+            請點擊上方工具列的 <strong>「📂 還原備份」</strong> 按鈕，選擇您先前備份的 JSON 檔案以恢復資料。<br>
+            若無備份檔，可直接開始記錄（資料將儲存於此路徑）。`;
+            notifyDiv.style.display = 'block';
+        } else {
+            // 可選：檢查當前週期是否有資料，若無也提示（但更常見的是完全沒資料）
+            const currentPeriodData = allPeriodsData[currentPeriodKey];
+            if (currentPeriodData && (currentPeriodData.orders.length === 0 && currentPeriodData.stockRows.every(r => r.prevStock === 0 && r.inbound === 0))) {
+                // 可選擇不提示，因為可能是新週期
+            }
+        }
+    }
+
+    function init() {
+        initDateRange();
+        loadAllData();
+        const start = document.getElementById('cat_startDate').value;
+        const end = document.getElementById('cat_endDate').value;
+        const periodKey = getPeriodKey(start, end);
+        loadPeriod(periodKey, start, end);
+        checkDataAndNotify();   // 新增：提醒可能的路徑變更
+
+        document.getElementById('cat_loadPeriodBtn').addEventListener('click', () => {
+            const newStart = document.getElementById('cat_startDate').value;
+            const newEnd = document.getElementById('cat_endDate').value;
+            if (!newStart || !newEnd) return;
+            loadPeriod(getPeriodKey(newStart, newEnd), newStart, newEnd);
+        });
+        document.getElementById('cat_copyPrevStockBtn').addEventListener('click', copyPrevPeriodStock);
+        document.getElementById('cat_resetInOutBtn').addEventListener('click', clearInOut);
+        document.getElementById('cat_exportStockBtn').addEventListener('click', exportStockExcel);
+        document.getElementById('cat_exportUsageDetailBtn').addEventListener('click', exportUsageDetailExcel);
+        document.getElementById('cat_monthSummaryBtn').addEventListener('click', showMonthSummary);
+        document.getElementById('cat_exportMonthBtn').addEventListener('click', exportMonthSummary);
+        document.getElementById('cat_exportYearBtn').addEventListener('click', exportYearSummary);
+        document.getElementById('cat_backupBtn').addEventListener('click', backupAll);
+        document.getElementById('cat_restoreBtn').addEventListener('click', () => document.getElementById('cat_restoreFileInput').click());
+        document.getElementById('cat_restoreFileInput').addEventListener('change', e => {
+            if (e.target.files.length) restoreFromFile(e.target.files[0]);
+            e.target.value = '';
+        });
+        document.getElementById('cat_newOrderBtn').addEventListener('click', newOrder);
+        const __persistCatDates = () => {
+            const s = document.getElementById('cat_startDate').value;
+            const e = document.getElementById('cat_endDate').value;
+            if (s && e) saveLastUsedInterval(s, e);
+        };
+        document.getElementById('cat_startDate').addEventListener('change', __persistCatDates);
+        document.getElementById('cat_endDate').addEventListener('change', __persistCatDates);
+        window.addEventListener('beforeunload', () => saveCurrentPeriod());
+    }
+    window.__nanaInit_catheter = init;
+
+    window.__nanaSave_catheter = function() { saveCurrentPeriod(); saveAllData(); };
+
+})();
+</script>
+
+
+<script>
+(function() {
+
+
+    // ---------- 預定義物品名稱清單 (透析器 + Bloodline) ----------
+    const ITEM_OPTIONS = [
+        "透析器 17G",
+        "透析器 Hi 15",
+        "透析器 Hi 18",
+        "透析器 T400",
+        "透析器 R300",
+        "透析器 R400",
+        "透析器 Fx5",
+        "透析器 Fx80 Classix",
+        "透析器 Fx80 Cordiax",
+        "Bloodline Dialog",
+        "Bloodline Gambro",
+        "Bloodline Artiset",
+        "Bloodline Fresenius"
+    ];
+
+    // 批次資料結構
+    let batchData = [];  // 每個物件 { itemName, spec, qty, expiryDate }
+
+    const STORAGE_KEY = "BackupBatchInventory";
+
+    // 載入資料
+    function loadData() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            batchData = JSON.parse(stored);
+        } else {
+            // 提供一些預設範例批次
+            batchData = [
+                { itemName: "透析器 17G", spec: "批號A123", qty: 5, expiryDate: "2026-12-31" },
+                { itemName: "透析器 17G", spec: "批號B456", qty: 3, expiryDate: "2025-10-20" },
+                { itemName: "Bloodline Dialog", spec: "24套/箱", qty: 8, expiryDate: "2027-03-15" },
+                { itemName: "透析器 Fx80 Classix", spec: "", qty: 2, expiryDate: "2026-01-10" },
+                { itemName: "透析器 T400", spec: "", qty: 4, expiryDate: "2025-08-05" },
+            ];
+            saveData();
+        }
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(batchData));
+        if (window.__nanaMarkSaved) window.__nanaMarkSaved("backup");
+    }
+
+    // 計算距離今天的天數
+    function getDaysUntilExpiry(expiryDateStr) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const expiry = new Date(expiryDateStr);
+        if (isNaN(expiry.getTime())) return Infinity;
+        const diffTime = expiry - today;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function isWarning(expiryDateStr) {
+        const days = getDaysUntilExpiry(expiryDateStr);
+        return days <= 270 && days >= 0;
+    }
+
+    function getStatusText(expiryDateStr) {
+        const days = getDaysUntilExpiry(expiryDateStr);
+        if (days < 0) return "❌ 已過期";
+        if (days <= 270) return `⚠️ 剩 ${days} 天 (建議提前使用)`;
+        return "✓ 正常";
+    }
+
+    // 渲染表格，可選擇是否分組 (但排序由外部控制，此處單純顯示)
+    function renderTable() {
+        const tbody = document.getElementById('bak_tableBody');
+        tbody.innerHTML = '';
+
+        batchData.forEach((item, idx) => {
+            const warning = isWarning(item.expiryDate);
+            const tr = document.createElement('tr');
+            if (warning) tr.classList.add('warning-row');
+
+            // 物品名稱 (下拉選單 + 可手動輸入)
+            const tdName = document.createElement('td');
+            const nameSelect = document.createElement('select');
+            // 加入內建選項
+            ITEM_OPTIONS.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                nameSelect.appendChild(option);
+            });
+            // 允許手動輸入其他名稱 (使用 datalist 概念，但 select 不可輸入，改用 input + datalist 較好)
+            // 為了讓使用者能自訂，改用 input + datalist
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.list = 'bak_itemDatalist';
+            nameInput.value = item.itemName;
+            nameInput.placeholder = "請選擇或輸入物品名稱";
+            nameInput.addEventListener('change', (e) => {
+                item.itemName = e.target.value;
+                saveData();
+            });
+            tdName.appendChild(nameInput);
+            
+            // 規格/批號 (自由文字)
+            const tdSpec = document.createElement('td');
+            const specInput = document.createElement('input');
+            specInput.type = 'text';
+            specInput.value = item.spec || '';
+            specInput.placeholder = "批號/規格 (選填)";
+            specInput.addEventListener('change', (e) => {
+                item.spec = e.target.value;
+                saveData();
+            });
+            tdSpec.appendChild(specInput);
+
+            // 箱數 (現存量)
+            const tdQty = document.createElement('td');
+            const qtyInput = document.createElement('input');
+            qtyInput.type = 'number';
+            qtyInput.value = item.qty;
+            qtyInput.step = '1';
+            qtyInput.min = '0';
+            qtyInput.addEventListener('change', (e) => {
+                let val = parseInt(e.target.value);
+                if (isNaN(val)) val = 0;
+                item.qty = val;
+                saveData();
+            });
+            tdQty.appendChild(qtyInput);
+
+            // 有效日期
+            const tdExpiry = document.createElement('td');
+            const expiryInput = document.createElement('input');
+            expiryInput.type = 'date';
+            expiryInput.value = item.expiryDate;
+            expiryInput.addEventListener('change', (e) => {
+                item.expiryDate = e.target.value;
+                saveData();
+                renderTable(); // 更新狀態
+            });
+            tdExpiry.appendChild(expiryInput);
+
+            // 狀態提醒
+            const tdStatus = document.createElement('td');
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'status-badge';
+            const statusText = getStatusText(item.expiryDate);
+            statusSpan.textContent = statusText;
+            if (isWarning(item.expiryDate)) statusSpan.classList.add('status-warning');
+            else statusSpan.classList.add('status-normal');
+            tdStatus.appendChild(statusSpan);
+
+            // 操作按鈕
+            const tdAction = document.createElement('td');
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '刪除';
+            delBtn.className = 'delete-btn';
+            delBtn.addEventListener('click', () => {
+                if (confirm(`刪除此批次 (${item.itemName} 有效期 ${item.expiryDate}) 嗎？`)) {
+                    batchData.splice(idx, 1);
+                    saveData();
+                    renderTable();
+                }
+            });
+            tdAction.appendChild(delBtn);
+
+            tr.appendChild(tdName);
+            tr.appendChild(tdSpec);
+            tr.appendChild(tdQty);
+            tr.appendChild(tdExpiry);
+            tr.appendChild(tdStatus);
+            tr.appendChild(tdAction);
+            tbody.appendChild(tr);
+        });
+
+        if (batchData.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 6;
+            td.textContent = "尚無批次記錄，請點擊「新增批次」開始記錄。";
+            td.style.textAlign = 'center';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }
+    }
+
+    // 新增空白批次
+    function addBatch() {
+        batchData.push({
+            itemName: ITEM_OPTIONS[0],
+            spec: "",
+            qty: 1,
+            expiryDate: ""
+        });
+        saveData();
+        renderTable();
+        setTimeout(() => {
+            const lastRow = document.querySelector('#bak_tableBody tr:last-child td:first-child input');
+            if (lastRow) lastRow.focus();
+        }, 50);
+    }
+
+    // 按有效期排序 (近效期優先)
+    function sortByExpiry() {
+        batchData.sort((a, b) => {
+            const daysA = getDaysUntilExpiry(a.expiryDate);
+            const daysB = getDaysUntilExpiry(b.expiryDate);
+            if (isNaN(daysA)) return 1;
+            if (isNaN(daysB)) return -1;
+            return daysA - daysB;
+        });
+        saveData();
+        renderTable();
+    }
+
+    // 依物品名稱分組排序 (相同物品排在一起)
+    function groupByName() {
+        batchData.sort((a, b) => {
+            return a.itemName.localeCompare(b.itemName, 'zh');
+        });
+        saveData();
+        renderTable();
+    }
+
+    // 匯出 Excel
+    function exportToExcel() {
+        const sheetData = [["物品名稱", "規格/批號", "箱數(現存量)", "有效日期", "狀態提醒"]];
+        for (const item of batchData) {
+            const status = getStatusText(item.expiryDate);
+            sheetData.push([item.itemName, item.spec || "", item.qty, item.expiryDate, status]);
+        }
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "後備物料批次清單");
+        XLSX.writeFile(wb, `後備物料批次_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // 備份
+    function backupData() {
+        const dataStr = JSON.stringify(batchData, null, 2);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const filename = `後備物料批次備份_${now.toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert("備份成功！");
+    }
+
+    // 還原
+    function restoreFromFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const restored = JSON.parse(e.target.result);
+                if (!Array.isArray(restored)) throw new Error();
+                batchData = restored;
+                saveData();
+                renderTable();
+                alert("還原成功！");
+            } catch (err) {
+                alert("還原失敗，請選擇正確的 JSON 備份檔案。");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // 顯示當前日期
+    function updateTodayDate() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2,'0');
+        const dd = String(today.getDate()).padStart(2,'0');
+        document.getElementById('bak_todayDate').innerHTML = `📅 今日：${yyyy}-${mm}-${dd} (有效期前9個月預警)`;
+    }
+
+    // 初始化 datalist 供物品名稱輸入 (讓下拉建議出現)
+    function initDatalist() {
+        let datalist = document.getElementById('bak_itemDatalist');
+        if (!datalist) {
+            datalist = document.createElement('datalist');
+            datalist.id = 'bak_itemDatalist';
+            document.body.appendChild(datalist);
+        }
+        datalist.innerHTML = '';
+        ITEM_OPTIONS.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            datalist.appendChild(option);
+        });
+    }
+
+    function init() {
+        initDatalist();
+        loadData();
+        renderTable();
+        updateTodayDate();
+
+        document.getElementById('bak_addRowBtn').addEventListener('click', addBatch);
+        document.getElementById('bak_sortByExpiryBtn').addEventListener('click', sortByExpiry);
+        document.getElementById('bak_groupByNameBtn').addEventListener('click', groupByName);
+        document.getElementById('bak_exportExcelBtn').addEventListener('click', exportToExcel);
+        document.getElementById('bak_backupBtn').addEventListener('click', backupData);
+        const restoreFileInput = document.getElementById('bak_restoreFileInput');
+        document.getElementById('bak_restoreBtn').addEventListener('click', () => restoreFileInput.click());
+        restoreFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) restoreFromFile(e.target.files[0]);
+            restoreFileInput.value = '';
+        });
+    }
+
+    window.__nanaInit_backup = init;
+
+    window.__nanaSave_backup = function() { saveData(); };
+
+})();
+</script>
+
+
+<script>
+(function() {
+
+    function __fmtLocalDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth()+1).padStart(2,'0');
+        const day = String(d.getDate()).padStart(2,'0');
+        return `${y}-${m}-${day}`;
+    }
+
+
+    // ---------- 物品清單 (共 50 項，與之前相同) ----------
+    const itemsRaw = [
+        { code: "2444030421", name: "Dialog Blood line", unit: "套" },
+        { code: "2444030243", name: "Diacap fluid filter", unit: "個" },
+        { code: "2444030235", name: "Dialog HDF line", unit: "套" },
+        { code: "2412990032", name: "Diacan 17G", unit: "支" },
+        { code: "2412990016", name: "Diacan 16G", unit: "支" },
+        { code: "2412990059", name: "Diacan 15G", unit: "支" },
+        { code: "2444990166", name: "Button Hole needles", unit: "支" },
+        { code: "2444030103", name: "Dialyzer 17 G", unit: "個" },
+        { code: "2444031657", name: "Dialyzer Hi 15", unit: "個" },
+        { code: "2444031649", name: "Dialyzer Hi 18", unit: "個" },
+        { code: "2444031630", name: "Nipro FB-19U", unit: "個" },
+        { code: "2128990294", name: "一次性穿刺包", unit: "包" },
+        { code: "2444990018", name: "動靜脈監測器", unit: "個" },
+        { code: "2444030251", name: "DFPP Kit", unit: "組" },
+        { code: "2424030260", name: "Heating bag", unit: "個" },
+        { code: "2444030278", name: "Pre-pump tube", unit: "條" },
+        { code: "2444030324", name: "DFPP Tubing sets-M30", unit: "組" },
+        { code: "2412990075", name: "Fav singucan eto", unit: "組" },
+        { code: "2490032900", name: "内瘘銀線球", unit: "個" },
+        { code: "2444030200", name: "Gambro blood line", unit: "套" },
+        { code: "2444030219", name: "Gambro infusion line", unit: "套" },
+        { code: "2444030227", name: "Gambro ultrafilter", unit: "個" },
+        { code: "2444061602", name: "Artist bloodline for HD", unit: "套" },
+        { code: "2444061629", name: "Ultra HDF line", unit: "套" },
+        { code: "2444061637", name: "Ultrafilter for Artis", unit: "個" },
+        { code: "2408039358", name: "三腔導管", unit: "條" },
+        { code: "2444060061", name: "Dialyzer Theranova 400", unit: "個" },
+        { code: "2444031622", name: "Dialyzer Revaclear 300", unit: "個" },
+        { code: "2444031550", name: "Dialyzer Rc 400", unit: "個" },
+        { code: "2444040079", name: "TPE 2000 set", unit: "組" },
+        { code: "2908042142", name: "ST 100", unit: "組" },
+        { code: "2444040060", name: "Charcoal Filter 碳腎", unit: "個" },
+        { code: "2436991137", name: "頸靜脈導管 (直管)", unit: "條" },
+        { code: "2444990042", name: "頸靜脈導管 (彎管) 13cm", unit: "條" },
+        { code: "2444030332", name: "頸靜脈導管 (彎管) 16cm", unit: "條" },
+        { code: "2436991145", name: "腹股溝導管", unit: "條" },
+        { code: "2444990115", name: "長期血透導管 33x50 cm", unit: "條" },
+        { code: "2444990174", name: "長期血透導管 28x45 cm", unit: "條" },
+        { code: "2444990122", name: "長期血透導管 23x40 cm", unit: "條" },
+        { code: "2444030316", name: "長期血透導管 55x72 cm", unit: "條" },
+        { code: "2444031541", name: "Dialyzer Fx 5", unit: "個" },
+        { code: "2444031614", name: "Dialyzer Fx80 classix", unit: "個" },
+        { code: "2444031630", name: "Dialyzer Fx 80 cordiax", unit: "個" },
+        { code: "2444032343", name: "BCM disposable electrodes", unit: "片" },
+        { code: "2444030286", name: "Fresenius blood line", unit: "套" },
+        { code: "2444030294", name: "Fresenius filter", unit: "個" },
+        { code: "2104060962", name: "3M藍色膠布", unit: "卷" },
+        { code: "2104060121", name: "3M白色膠布", unit: "卷" },
+        { code: "2604042804", name: "軟針 (Safty fistula cannula with anti-reflux valve)", unit: "支" },
+        { code: "2444030375", name: "樹脂型血液灌流器 HA130", unit: "個" }
+    ];
+    const masterItems = itemsRaw;
+
+    // ---------- 資料結構 (與之前相同，key 為 HD_PeriodsData_v2) ----------
+    let allPeriodsData = {};
+    let currentPeriodKey = "";
+    let currentRowData = [];
+
+    function getPeriodKey(startDate, endDate) { return `${startDate}_to_${endDate}`; }
+    function loadAllPeriods() {
+        const stored = localStorage.getItem("HD_PeriodsData_v2");
+        if (stored) allPeriodsData = JSON.parse(stored);
+        else allPeriodsData = {};
+    }
+    function saveAllPeriods() { localStorage.setItem("HD_PeriodsData_v2", JSON.stringify(allPeriodsData)); if (window.__nanaMarkSaved) window.__nanaMarkSaved("weekly"); }
+
+    function getPeriodData(periodKey) {
+        if (!allPeriodsData[periodKey]) {
+            const rows = masterItems.map(() => ({
+                prevStock: 0, room1: 0, room2: 0, room3: 0, room4: 0, other: 0, returned: 0
+            }));
+            allPeriodsData[periodKey] = { rows: rows };
+        }
+        return allPeriodsData[periodKey];
+    }
+
+    function saveCurrentPeriod() {
+        if (!currentPeriodKey) return;
+        const periodData = getPeriodData(currentPeriodKey);
+        for (let i = 0; i < currentRowData.length; i++) {
+            periodData.rows[i] = { ...currentRowData[i] };
+        }
+        allPeriodsData[currentPeriodKey] = periodData;
+        saveAllPeriods();
+    }
+
+    function loadPeriod(periodKey, startDate, endDate) {
+        saveCurrentPeriod();
+        currentPeriodKey = periodKey;
+        const periodData = getPeriodData(periodKey);
+        currentRowData = periodData.rows.map(row => ({
+            prevStock: row.prevStock, room1: row.room1, room2: row.room2,
+            room3: row.room3, room4: row.room4, other: row.other, returned: row.returned
+        }));
+        renderTable();
+        document.getElementById('wk_startDate').value = startDate;
+        document.getElementById('wk_endDate').value = endDate;
+        saveLastUsedInterval(startDate, endDate);
+    }
+
+    function calcTotalUse(row) {
+        return (row.room1||0)+(row.room2||0)+(row.room3||0)+(row.room4||0)+(row.other||0);
+    }
+    function calcEndStock(prev, totalUse, returned) {
+        let end = prev - totalUse + returned;
+        return end < 0 ? 0 : end;
+    }
+
+    function createNumberInput(value, rowIdx, field) {
+        const td = document.createElement('td');
+        const inp = document.createElement('input');
+        inp.type = 'number'; inp.value = value; inp.step = '1';
+        inp.dataset.row = rowIdx; inp.dataset.field = field;
+        td.appendChild(inp);
+        return td;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('wk_tableBody');
+        tbody.innerHTML = '';
+        for (let i = 0; i < masterItems.length; i++) {
+            const item = masterItems[i];
+            const row = currentRowData[i];
+            const tr = document.createElement('tr');
+            const tdCode = document.createElement('td'); tdCode.textContent = item.code;
+            const tdName = document.createElement('td'); tdName.textContent = item.name;
+            const tdUnit = document.createElement('td'); tdUnit.textContent = item.unit;
+            const tdPrev = document.createElement('td');
+            const prevInput = document.createElement('input'); prevInput.type = 'number'; prevInput.value = row.prevStock; prevInput.step = '1'; prevInput.dataset.row = i;
+            tdPrev.appendChild(prevInput);
+            const tdRoom1 = createNumberInput(row.room1, i, 'room1');
+            const tdRoom2 = createNumberInput(row.room2, i, 'room2');
+            const tdRoom3 = createNumberInput(row.room3, i, 'room3');
+            const tdRoom4 = createNumberInput(row.room4, i, 'room4');
+            const tdOther = createNumberInput(row.other, i, 'other');
+            const tdTotal = document.createElement('td');
+            const totalSpan = document.createElement('span'); totalSpan.className = 'readonly-cell';
+            const totalUse = calcTotalUse(row);
+            totalSpan.textContent = totalUse;
+            tdTotal.appendChild(totalSpan);
+            const tdReturn = document.createElement('td');
+            const returnInput = document.createElement('input'); returnInput.type = 'number'; returnInput.value = row.returned; returnInput.step = '1'; returnInput.dataset.row = i;
+            tdReturn.appendChild(returnInput);
+            const tdEnd = document.createElement('td');
+            const endSpan = document.createElement('span'); endSpan.className = 'readonly-cell';
+            const endVal = calcEndStock(row.prevStock, totalUse, row.returned);
+            endSpan.textContent = endVal;
+            tdEnd.appendChild(endSpan);
+
+            tr.appendChild(tdCode); tr.appendChild(tdName); tr.appendChild(tdUnit); tr.appendChild(tdPrev);
+            tr.appendChild(tdRoom1); tr.appendChild(tdRoom2); tr.appendChild(tdRoom3); tr.appendChild(tdRoom4);
+            tr.appendChild(tdOther); tr.appendChild(tdTotal); tr.appendChild(tdReturn); tr.appendChild(tdEnd);
+            tbody.appendChild(tr);
+
+            const updateRow = () => {
+                const newPrev = parseFloat(prevInput.value) || 0;
+                const newRoom1 = parseFloat(document.querySelector(`input[data-row='${i}'][data-field='room1']`).value) || 0;
+                const newRoom2 = parseFloat(document.querySelector(`input[data-row='${i}'][data-field='room2']`).value) || 0;
+                const newRoom3 = parseFloat(document.querySelector(`input[data-row='${i}'][data-field='room3']`).value) || 0;
+                const newRoom4 = parseFloat(document.querySelector(`input[data-row='${i}'][data-field='room4']`).value) || 0;
+                const newOther = parseFloat(document.querySelector(`input[data-row='${i}'][data-field='other']`).value) || 0;
+                const newReturn = parseFloat(returnInput.value) || 0;
+                const newTotal = newRoom1+newRoom2+newRoom3+newRoom4+newOther;
+                totalSpan.textContent = newTotal;
+                const newEnd = calcEndStock(newPrev, newTotal, newReturn);
+                endSpan.textContent = newEnd;
+                currentRowData[i] = { prevStock: newPrev, room1: newRoom1, room2: newRoom2, room3: newRoom3, room4: newRoom4, other: newOther, returned: newReturn };
+            };
+            prevInput.addEventListener('input', updateRow);
+            returnInput.addEventListener('input', updateRow);
+            const roomInputs = [tdRoom1, tdRoom2, tdRoom3, tdRoom4, tdOther].map(td => td.querySelector('input'));
+            roomInputs.forEach(inp => inp.addEventListener('input', updateRow));
+        }
+    }
+
+    function copyPrevPeriodStock() {
+        const startDate = document.getElementById('wk_startDate').value;
+        if (!startDate) return;
+        const currentStart = new Date(startDate);
+        let prevPeriodKey = null, prevEndDate = null;
+        for (const key in allPeriodsData) {
+            const [s, e] = key.split('_to_');
+            const endDateObj = new Date(e);
+            if (endDateObj < currentStart) {
+                if (!prevEndDate || endDateObj > new Date(prevEndDate)) {
+                    prevEndDate = e; prevPeriodKey = key;
+                }
+            }
+        }
+        if (!prevPeriodKey) { alert("未找到上一區間資料"); return; }
+        const prevData = allPeriodsData[prevPeriodKey];
+        for (let i = 0; i < masterItems.length; i++) {
+            const prevRow = prevData.rows[i];
+            const prevTotalUse = (prevRow.room1||0)+(prevRow.room2||0)+(prevRow.room3||0)+(prevRow.room4||0)+(prevRow.other||0);
+            const prevEnd = calcEndStock(prevRow.prevStock, prevTotalUse, prevRow.returned);
+            currentRowData[i].prevStock = prevEnd;
+        }
+        renderTable();
+        saveCurrentPeriod();
+    }
+
+    function clearCurrentInputs() {
+        for (let i = 0; i < currentRowData.length; i++) {
+            currentRowData[i].room1 = 0; currentRowData[i].room2 = 0; currentRowData[i].room3 = 0;
+            currentRowData[i].room4 = 0; currentRowData[i].other = 0; currentRowData[i].returned = 0;
+        }
+        renderTable();
+        saveCurrentPeriod();
+    }
+
+    function exportCurrentPeriod() {
+        const sheetData = [["物品代碼","物品名稱","單位","上週結存(期初)","1室","2室","3室","4室","其他科借用","總領用","本週返貨","本週結存"]];
+        for (let i=0; i<masterItems.length; i++) {
+            const item = masterItems[i]; const row = currentRowData[i];
+            const totalUse = calcTotalUse(row);
+            const endStock = calcEndStock(row.prevStock, totalUse, row.returned);
+            sheetData.push([item.code, item.name, item.unit, row.prevStock, row.room1, row.room2, row.room3, row.room4, row.other, totalUse, row.returned, endStock]);
+        }
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        const start = document.getElementById('wk_startDate').value, end = document.getElementById('wk_endDate').value;
+        XLSX.utils.book_append_sheet(wb, ws, `血透週報_${start}_to_${end}`);
+        XLSX.writeFile(wb, `血液透析週報_${start}_to_${end}.xlsx`);
+    }
+
+    // ---------- 每月 / 每年總結 ----------
+    function getMonthSummaryData(monthStr) {
+        const [year, month] = monthStr.split('-');
+        if (!year || !month) { alert("格式錯誤"); return null; }
+        const targetYear = parseInt(year), targetMonth = parseInt(month);
+        const periods = [];
+        for (const key in allPeriodsData) {
+            const [s, e] = key.split('_to_');
+            const endDate = new Date(e);
+            if (endDate.getFullYear() === targetYear && endDate.getMonth()+1 === targetMonth) {
+                periods.push({ key, endDate, data: allPeriodsData[key] });
+            }
+        }
+        if (periods.length === 0) { alert(`無 ${monthStr} 資料`); return null; }
+        periods.sort((a,b)=>a.endDate - b.endDate);
+        const summary = masterItems.map((item, idx) => {
+            let totalInbound = 0, totalUsed = 0, totalReturned = 0, lastEnd = 0;
+            for (let p of periods) {
+                const row = p.data.rows[idx];
+                totalInbound += (row.room1+row.room2+row.room3+row.room4+row.other);
+                totalUsed += (row.room1+row.room2+row.room3+row.room4+row.other);
+                totalReturned += row.returned;
+                const end = calcEndStock(row.prevStock, totalUsed, row.returned);
+                lastEnd = end;
+            }
+            return { code: item.code, name: item.name, unit: item.unit, totalInbound, totalUsed, totalReturned, lastEnd };
+        });
+        return { summary, periodsCount: periods.length };
+    }
+
+    function showMonthSummary() {
+        const monthStr = prompt("輸入月份 (YYYY-MM)：", "2026-05");
+        if (!monthStr) return;
+        const res = getMonthSummaryData(monthStr);
+        if (!res) return;
+        let html = `<h4>${monthStr} 總結 (共 ${res.periodsCount} 個週期)</h4><table border="1"><thead><tr><th>物品代碼</th><th>物品名稱</th><th>單位</th><th>總領用量</th><th>總返貨量</th><th>月底結存</th></tr></thead><tbody>`;
+        for (const s of res.summary) {
+            html += `<tr><td>${s.code}</td><td>${s.name}</td><td>${s.unit}</td><td>${s.totalUsed}</td><td>${s.totalReturned}</td><td><strong>${s.lastEnd}</strong></td></tr>`;
+        }
+        html += `</tbody></table>`;
+        document.getElementById('wk_monthSummaryTable').innerHTML = html;
+        document.getElementById('wk_monthSummaryArea').style.display = 'block';
+    }
+
+    function exportMonthSummary() {
+        const monthStr = prompt("匯出月份 (YYYY-MM)：", "2026-05");
+        if (!monthStr) return;
+        const res = getMonthSummaryData(monthStr);
+        if (!res) return;
+        const sheetData = [["物品代碼","物品名稱","單位","總領用量","總返貨量","月底結存"]];
+        for (const s of res.summary) sheetData.push([s.code, s.name, s.unit, s.totalUsed, s.totalReturned, s.lastEnd]);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `每月總結_${monthStr}`);
+        XLSX.writeFile(wb, `血液透析每月總結_${monthStr}.xlsx`);
+    }
+
+    function exportYearSummary() {
+        const yearStr = prompt("匯出年份 (YYYY)：", "2026");
+        if (!yearStr) return;
+        const targetYear = parseInt(yearStr);
+        const periodsInYear = [];
+        for (const key in allPeriodsData) {
+            const [s, e] = key.split('_to_');
+            const endDate = new Date(e);
+            if (endDate.getFullYear() === targetYear) periodsInYear.push({ key, endDate, data: allPeriodsData[key] });
+        }
+        if (periodsInYear.length === 0) { alert(`無 ${yearStr} 資料`); return; }
+        periodsInYear.sort((a,b)=>a.endDate - b.endDate);
+        const summary = masterItems.map((item, idx) => {
+            let totalUsed = 0, totalReturned = 0, lastEnd = 0;
+            for (let p of periodsInYear) {
+                const row = p.data.rows[idx];
+                totalUsed += (row.room1+row.room2+row.room3+row.room4+row.other);
+                totalReturned += row.returned;
+                lastEnd = calcEndStock(row.prevStock, totalUsed, row.returned);
+            }
+            return { code: item.code, name: item.name, unit: item.unit, totalUsed, totalReturned, lastEnd };
+        });
+        const sheetData = [["物品代碼","物品名稱","單位","全年總領用量","全年總返貨量","年底結存"]];
+        for (const s of summary) sheetData.push([s.code, s.name, s.unit, s.totalUsed, s.totalReturned, s.lastEnd]);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `每年總結_${yearStr}`);
+        XLSX.writeFile(wb, `血液透析每年總結_${yearStr}.xlsx`);
+    }
+
+    // ---------- 備份還原 ----------
+    function backupAllData() {
+        saveCurrentPeriod();
+        const dataStr = JSON.stringify(allPeriodsData, null, 2);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const filename = `血透物料備份_${now.toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+        a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert("備份成功！已匯出 JSON 檔案。");
+    }
+
+    function restoreFromFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const restored = JSON.parse(e.target.result);
+                if (typeof restored !== 'object') throw new Error("格式錯誤");
+                allPeriodsData = restored;
+                saveAllPeriods();
+                const start = document.getElementById('wk_startDate').value;
+                const end = document.getElementById('wk_endDate').value;
+                const periodKey = getPeriodKey(start, end);
+                loadPeriod(periodKey, start, end);
+                alert("還原成功！所有週期資料已恢復。");
+                document.getElementById('wk_pathNotify').style.display = 'none'; // 還原後隱藏提示
+            } catch(err) {
+                alert("還原失敗，請確認選擇的是正確的 JSON 備份檔案。");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // ---------- 自動記住區間 ----------
+    function saveLastUsedInterval(start, end) {
+        localStorage.setItem("lastUsedStartDate", start);
+        localStorage.setItem("lastUsedEndDate", end);
+    }
+
+    function initDateRange() {
+        const lastStart = localStorage.getItem("lastUsedStartDate");
+        const lastEnd = localStorage.getItem("lastUsedEndDate");
+        if (lastStart && lastEnd && !isNaN(new Date(lastStart)) && !isNaN(new Date(lastEnd))) {
+            document.getElementById('wk_startDate').value = lastStart;
+            document.getElementById('wk_endDate').value = lastEnd;
+            return;
+        }
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        let thisThursday = new Date(today);
+        if (dayOfWeek <= 4) thisThursday.setDate(today.getDate() + (4 - dayOfWeek));
+        else thisThursday.setDate(today.getDate() + (4 + 7 - dayOfWeek));
+        const lastFriday = new Date(thisThursday);
+        lastFriday.setDate(thisThursday.getDate() - 6);
+        const formatDate = __fmtLocalDate;
+        document.getElementById('wk_startDate').value = formatDate(lastFriday);
+        document.getElementById('wk_endDate').value = formatDate(thisThursday);
+    }
+
+    // 檢查是否有資料，若無則提示可能為路徑變更並建議還原
+    function checkDataAndNotify() {
+        const hasAnyData = Object.keys(allPeriodsData).length > 0;
+        if (!hasAnyData) {
+            const notifyDiv = document.getElementById('wk_pathNotify');
+            notifyDiv.innerHTML = `⚠️ 偵測到目前為新環境或檔案位置可能已移動，先前儲存的資料不會自動轉移。<br>
+            請點擊上方工具列的 <strong>「📂 還原備份」</strong> 按鈕，選擇您先前備份的 JSON 檔案以恢復資料。<br>
+            若無備份檔，可直接開始記錄（資料將儲存於此路徑）。`;
+            notifyDiv.style.display = 'block';
+        }
+    }
+
+    // ---------- 初始化 ----------
+    function init() {
+        initDateRange();
+        loadAllPeriods();
+        const start = document.getElementById('wk_startDate').value;
+        const end = document.getElementById('wk_endDate').value;
+        const periodKey = getPeriodKey(start, end);
+        loadPeriod(periodKey, start, end);
+        checkDataAndNotify();  // 新增：檢查並提示
+
+        document.getElementById('wk_loadPeriodBtn').addEventListener('click', () => {
+            const newStart = document.getElementById('wk_startDate').value;
+            const newEnd = document.getElementById('wk_endDate').value;
+            if (!newStart || !newEnd) return;
+            loadPeriod(getPeriodKey(newStart, newEnd), newStart, newEnd);
+        });
+        document.getElementById('wk_copyPrevPeriodBtn').addEventListener('click', copyPrevPeriodStock);
+        document.getElementById('wk_clearInputsBtn').addEventListener('click', clearCurrentInputs);
+        document.getElementById('wk_exportBtn').addEventListener('click', exportCurrentPeriod);
+        document.getElementById('wk_monthSummaryBtn').addEventListener('click', showMonthSummary);
+        document.getElementById('wk_exportMonthSummaryBtn').addEventListener('click', exportMonthSummary);
+        document.getElementById('wk_exportYearSummaryBtn').addEventListener('click', exportYearSummary);
+        document.getElementById('wk_backupBtn').addEventListener('click', backupAllData);
+        const restoreFileInput = document.getElementById('wk_restoreFileInput');
+        document.getElementById('wk_restoreBtn').addEventListener('click', () => restoreFileInput.click());
+        restoreFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) restoreFromFile(e.target.files[0]);
+            restoreFileInput.value = '';
+        });
+        const __persistWkDates = () => {
+            const s = document.getElementById('wk_startDate').value;
+            const e = document.getElementById('wk_endDate').value;
+            if (s && e) saveLastUsedInterval(s, e);
+        };
+        document.getElementById('wk_startDate').addEventListener('change', __persistWkDates);
+        document.getElementById('wk_endDate').addEventListener('change', __persistWkDates);
+        window.addEventListener('beforeunload', () => saveCurrentPeriod());
+    }
+    window.__nanaInit_weekly = init;
+
+    window.__nanaSave_weekly = function() { saveCurrentPeriod(); saveAllPeriods(); };
+
+})();
+</script>
+
+
+</body>
+</html>

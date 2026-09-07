@@ -1,0 +1,700 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>血液透析導管借用/歸還記錄表</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', '微軟正黑體', Roboto, sans-serif;
+            background: #e9f0f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        h1, h2 { color: #0066b4; border-left: 6px solid #0066b4; padding-left: 20px; }
+        h1 { font-size: 1.8rem; margin-top: 0; }
+        h2 { font-size: 1.4rem; margin: 25px 0 15px 0; }
+        .toolbar {
+            display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0;
+            align-items: center; background: #f0f7ff; padding: 12px 20px;
+            border-radius: 40px;
+        }
+        .toolbar label { font-weight: bold; color: #004d80; }
+        .toolbar input, .toolbar select { padding: 6px 12px; border-radius: 20px; border: 1px solid #ccc; font-size: 0.9rem; }
+        button {
+            background: #2c7da0; border: none; color: white; font-weight: bold;
+            padding: 6px 16px; border-radius: 30px; cursor: pointer; font-size: 0.9rem;
+        }
+        button:hover { background: #1f5e7a; }
+        .btn-success { background: #2c6e2f; }
+        .btn-danger { background: #b85c1a; }
+        .btn-secondary { background: #5e6b7c; }
+        .table-wrapper { overflow-x: auto; border-radius: 16px; border: 1px solid #d4dee5; background: #fff; margin: 15px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 800px; }
+        th { background: #e3eff9; color: #004070; padding: 10px 6px; border: 1px solid #cbdbe2; }
+        td { border: 1px solid #dee2e8; padding: 6px 4px; background-color: #fff; }
+        input, select { width: 100%; border: none; background: #fef9e3; font-size: 12px; padding: 6px; border-radius: 8px; text-align: center; }
+        input:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
+        .readonly-cell { background: #f0f7ff; font-weight: bold; text-align: center; }
+        .summary-area { margin-top: 30px; background: #f8fafc; border-radius: 20px; padding: 15px; border: 1px solid #cbd5e1; }
+        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
+        .order-card {
+            background: #fef9e3;
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ffe0a3;
+        }
+        .notification {
+            background: #fff3cd;
+            border-left: 6px solid #ffc107;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+    </style>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>🩸 血液透析導管借用/歸還記錄表</h1>
+    <div id="pathNotify" class="notification" style="display:none;"></div>
+    <div class="toolbar">
+        <label>📅 記錄區間：</label>
+        <input type="date" id="startDate" value="2026-04-25">
+        <span> 至 </span>
+        <input type="date" id="endDate" value="2026-05-01">
+        <button id="loadPeriodBtn">載入／切換區間</button>
+        <button id="copyPrevStockBtn">📋 複製上期結存至本期期初</button>
+        <button id="resetInOutBtn">🧹 清空本週入庫(保留庫存)</button>
+        <button id="exportStockBtn">📎 匯出本週庫存表</button>
+        <button id="exportUsageDetailBtn">📎 匯出病人領用明細</button>
+        <button id="monthSummaryBtn">📊 每月總結預覽</button>
+        <button id="exportMonthBtn">📎 匯出每月總結</button>
+        <button id="exportYearBtn">📎 匯出每年總結</button>
+        <button id="backupBtn" class="btn-success">💾 備份全部資料</button>
+        <button id="restoreBtn" class="btn-danger">📂 還原備份</button>
+        <input type="file" id="restoreFileInput" accept=".json" style="display:none;">
+    </div>
+
+    <!-- 庫存總表 -->
+    <h2>📦 導管庫存總表 (依型號)</h2>
+    <div class="table-wrapper">
+        <table id="stockTable">
+            <thead>
+                <tr><th>導管型號</th><th>單位</th><th>上週結存(期初)</th><th>本週入庫</th><th>本週實際使用</th><th>本週返貨(歸還)</th><th>本週結存</th></tr>
+                <tr style="background:#f0f8ff"><th colspan="7">⚠️ 操作：手動填寫「上週結存」、「本週入庫」。「實際使用」與「返貨」由下方借用單自動計算。</th></tr>
+            </thead>
+            <tbody id="stockBody"></tbody>
+        </table>
+    </div>
+
+    <!-- 病人領用明細 -->
+    <h2>📋 病人領用明細 (強制記錄長期管/臨時管)</h2>
+    <div class="table-wrapper">
+        <table id="usageDetailTable">
+            <thead>
+                <tr><th>領用日期<br>(手術日)</th><th>病人姓名</th><th>醫療編號</th><th>導管型號</th><th>長期/臨時</th><th>領用數量<br>(實際使用)</th><th>歸還數量</th><th>備註</th></tr>
+                <tr><th colspan="8">⚠️ 本表格自動從下方「手術借用單」產生，記錄每種導管的實際領用量（借出-歸還）。無需手動輸入。</th></tr>
+            </thead>
+            <tbody id="usageDetailBody"></tbody>
+        </table>
+    </div>
+
+    <!-- 手術借用單管理 -->
+    <h2>✂️ 手術借用單管理 (支援多型號借出/歸還，日期最近者顯示在最上方)</h2>
+    <div class="flex-row">
+        <button id="newOrderBtn" class="btn-success">➕ 新增手術借用單</button>
+        <span>✏️ 每張借用單記錄術前借出的多種導管及數量；術後可歸還未使用部分。型號選擇請輸入數字序號。</span>
+    </div>
+    <div id="ordersContainer"></div>
+
+    <!-- 總結預覽區 -->
+    <div id="summaryArea" class="summary-area" style="display:none;">
+        <h3>📊 統計結果預覽</h3>
+        <div id="summaryContent"></div>
+    </div>
+</div>
+
+<script>
+    // ----- 導管型號清單 (長期管/臨時管自動標記) -----
+    const CATHETER_MODELS = [
+        { name: "長期血透導管 33x50cm", unit: "條", type: "長期管" },
+        { name: "長期血透導管 28x45cm", unit: "條", type: "長期管" },
+        { name: "長期血透導管 23x40cm", unit: "條", type: "長期管" },
+        { name: "長期血透導管 55x72cm", unit: "條", type: "長期管" },
+        { name: "頸靜脈導管 (直管)", unit: "條", type: "臨時管" },
+        { name: "頸靜脈導管 (彎管) 13cm", unit: "條", type: "臨時管" },
+        { name: "頸靜脈導管 (彎管) 16cm", unit: "條", type: "臨時管" },
+        { name: "腹股溝導管", unit: "條", type: "臨時管" },
+        { name: "三腔導管", unit: "條", type: "臨時管" }
+    ];
+
+    let allPeriodsData = {};
+    let currentPeriodKey = "";
+    let currentStockRows = [];
+    let currentOrders = [];
+
+    function getPeriodKey(start, end) { return `${start}_to_${end}`; }
+    function loadAllData() {
+        const stored = localStorage.getItem("CatheterBorrowData_v2");
+        if (stored) allPeriodsData = JSON.parse(stored);
+        else allPeriodsData = {};
+    }
+    function saveAllData() { localStorage.setItem("CatheterBorrowData_v2", JSON.stringify(allPeriodsData)); }
+
+    function getPeriodData(periodKey) {
+        if (!allPeriodsData[periodKey]) {
+            const stockRows = CATHETER_MODELS.map(() => ({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0 }));
+            allPeriodsData[periodKey] = { stockRows: stockRows, orders: [] };
+        }
+        return allPeriodsData[periodKey];
+    }
+
+    function saveCurrentPeriod() {
+        if (!currentPeriodKey) return;
+        const periodData = getPeriodData(currentPeriodKey);
+        periodData.stockRows = currentStockRows.map(r => ({ ...r }));
+        periodData.orders = JSON.parse(JSON.stringify(currentOrders));
+        allPeriodsData[currentPeriodKey] = periodData;
+        saveAllData();
+    }
+
+    function recalcUsageAndReturnFromOrders() {
+        const totalBorrowed = new Array(CATHETER_MODELS.length).fill(0);
+        const totalReturned = new Array(CATHETER_MODELS.length).fill(0);
+        for (const order of currentOrders) {
+            for (let item of order.borrowed) {
+                const idx = CATHETER_MODELS.findIndex(m => m.name === item.model);
+                if (idx !== -1) totalBorrowed[idx] += item.qty;
+            }
+            if (order.returned && order.returned.length) {
+                for (let ret of order.returned) {
+                    const idx = CATHETER_MODELS.findIndex(m => m.name === ret.model);
+                    if (idx !== -1) totalReturned[idx] += ret.qty;
+                }
+            }
+        }
+        for (let i = 0; i < CATHETER_MODELS.length; i++) {
+            currentStockRows[i].used = totalBorrowed[i] - totalReturned[i];
+            if (currentStockRows[i].used < 0) currentStockRows[i].used = 0;
+            currentStockRows[i].returned = totalReturned[i];
+            currentStockRows[i].endStock = calcEndStock(currentStockRows[i].prevStock, currentStockRows[i].inbound, currentStockRows[i].used, currentStockRows[i].returned);
+        }
+    }
+
+    function calcEndStock(prev, inbound, used, returned) {
+        let end = prev + inbound - used + returned;
+        return end < 0 ? 0 : end;
+    }
+
+    function renderStockTable() {
+        const tbody = document.getElementById('stockBody');
+        tbody.innerHTML = '';
+        for (let i = 0; i < CATHETER_MODELS.length; i++) {
+            const model = CATHETER_MODELS[i];
+            const row = currentStockRows[i];
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${model.name}${model.type ? ` (${model.type})` : ''}</td>
+                <td>${model.unit}</td>
+                <td><input type="number" class="prevStock" data-idx="${i}" value="${row.prevStock}"></td>
+                <td><input type="number" class="inbound" data-idx="${i}" value="${row.inbound}"></td>
+                <td class="readonly-cell usedCell">${row.used}</td>
+                <td class="readonly-cell returnedCell">${row.returned}</td>
+                <td class="readonly-cell endStockCell">${row.endStock}</td>
+            `;
+            tbody.appendChild(tr);
+        }
+        document.querySelectorAll('.prevStock, .inbound').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                const idx = parseInt(e.target.dataset.idx);
+                const val = parseFloat(e.target.value) || 0;
+                if (e.target.classList.contains('prevStock')) currentStockRows[idx].prevStock = val;
+                else if (e.target.classList.contains('inbound')) currentStockRows[idx].inbound = val;
+                recalcUsageAndReturnFromOrders();
+                renderStockTable();
+                renderUsageDetailTable();
+                saveCurrentPeriod();
+            });
+        });
+    }
+
+    function renderUsageDetailTable() {
+        const tbody = document.getElementById('usageDetailBody');
+        tbody.innerHTML = '';
+        for (const order of currentOrders) {
+            for (const borrow of order.borrowed) {
+                const modelObj = CATHETER_MODELS.find(m => m.name === borrow.model);
+                if (!modelObj) continue;
+                const returnedItem = order.returned.find(r => r.model === borrow.model);
+                const returnQty = returnedItem ? returnedItem.qty : 0;
+                const actualUsed = borrow.qty - returnQty;
+                if (actualUsed === 0 && returnQty === borrow.qty) continue;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${order.surgeryDate}</td>
+                    <td>${order.patientName}</td>
+                    <td>${order.patientId}</td>
+                    <td>${borrow.model}</td>
+                    <td>${modelObj.type}</td>
+                    <td>${actualUsed}</td>
+                    <td>${returnQty}</td>
+                    <td>${actualUsed > 0 ? '實際使用' : (returnQty > 0 ? '全數歸還' : '')}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+        if (currentOrders.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="8" style="text-align:center;">尚無借用單記錄，請點擊上方「新增手術借用單」</td>';
+            tbody.appendChild(tr);
+        }
+    }
+
+    function renderOrders() {
+        currentOrders.sort((a, b) => b.surgeryDate.localeCompare(a.surgeryDate));
+        const container = document.getElementById('ordersContainer');
+        container.innerHTML = '';
+        for (let idx = 0; idx < currentOrders.length; idx++) {
+            const order = currentOrders[idx];
+            const div = document.createElement('div');
+            div.className = 'order-card';
+            let html = `<div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong>📄 手術借用單 #${idx+1}</strong>
+                <div><button class="deleteOrderBtn" data-idx="${idx}" style="background:#b85c1a;">🗑️ 刪除整單</button></div>
+            </div>`;
+            html += `<div><span>病人：${order.patientName} (${order.patientId})</span> | <span>手術日期：${order.surgeryDate}</span></div>`;
+            html += `<h4 style="margin:10px 0 5px 0;">✈️ 術前借出導管</h4>
+            <table style="width:100%;"><thead><tr><th>型號</th><th>借出數量</th><th>操作</th></tr></thead><tbody>`;
+            for (let bIdx = 0; bIdx < order.borrowed.length; bIdx++) {
+                const b = order.borrowed[bIdx];
+                html += `<tr>
+                    <td>${b.model}</td>
+                    <td><input type="number" class="borrowedQty" data-order="${idx}" data-bidx="${bIdx}" value="${b.qty}" style="width:80px;"></td>
+                    <td><button class="removeBorrowedBtn" data-order="${idx}" data-bidx="${bIdx}">❌ 刪除此項</button></td>
+                </tr>`;
+            }
+            html += `<tr><td colspan="3"><button class="addBorrowedBtn" data-order="${idx}">➕ 增加借出型號</button></td></tr>`;
+            html += `</tbody></table>`;
+            html += `<h4 style="margin:10px 0 5px 0;">🔄 術後歸還導管 (未使用)</h4>
+            <table style="width:100%;"><thead><tr><th>型號</th><th>歸還數量</th><th>操作</th></tr></thead><tbody>`;
+            if (order.returned && order.returned.length) {
+                for (let rIdx = 0; rIdx < order.returned.length; rIdx++) {
+                    const r = order.returned[rIdx];
+                    html += `<tr>
+                        <td>${r.model}</td>
+                        <td><input type="number" class="returnedQty" data-order="${idx}" data-ridx="${rIdx}" value="${r.qty}" style="width:80px;"></td>
+                        <td><button class="removeReturnedBtn" data-order="${idx}" data-ridx="${rIdx}">❌ 刪除此項</button></td>
+                    </tr>`;
+                }
+            }
+            html += `<tr><td colspan="3"><button class="addReturnedBtn" data-order="${idx}">➕ 增加歸還型號</button></td></tr>`;
+            html += `</tbody></table>`;
+            div.innerHTML = html;
+            container.appendChild(div);
+        }
+        attachOrderEvents();
+        recalcUsageAndReturnFromOrders();
+        renderStockTable();
+        renderUsageDetailTable();
+        saveCurrentPeriod();
+    }
+
+    function attachOrderEvents() {
+        document.querySelectorAll('.deleteOrderBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(btn.dataset.idx);
+                if (confirm('刪除此借用單，所有借出歸還記錄將消失？')) {
+                    currentOrders.splice(idx, 1);
+                    renderOrders();
+                }
+            });
+        });
+        document.querySelectorAll('.borrowedQty').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                const orderIdx = parseInt(inp.dataset.order);
+                const bIdx = parseInt(inp.dataset.bidx);
+                const newVal = parseInt(inp.value) || 0;
+                if (currentOrders[orderIdx] && currentOrders[orderIdx].borrowed[bIdx]) {
+                    currentOrders[orderIdx].borrowed[bIdx].qty = newVal;
+                    recalcUsageAndReturnFromOrders();
+                    renderStockTable();
+                    renderUsageDetailTable();
+                    saveCurrentPeriod();
+                }
+            });
+        });
+        document.querySelectorAll('.returnedQty').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                const orderIdx = parseInt(inp.dataset.order);
+                const rIdx = parseInt(inp.dataset.ridx);
+                const newVal = parseInt(inp.value) || 0;
+                if (currentOrders[orderIdx] && currentOrders[orderIdx].returned[rIdx]) {
+                    currentOrders[orderIdx].returned[rIdx].qty = newVal;
+                    recalcUsageAndReturnFromOrders();
+                    renderStockTable();
+                    renderUsageDetailTable();
+                    saveCurrentPeriod();
+                }
+            });
+        });
+        document.querySelectorAll('.removeBorrowedBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const orderIdx = parseInt(btn.dataset.order);
+                const bIdx = parseInt(btn.dataset.bidx);
+                currentOrders[orderIdx].borrowed.splice(bIdx, 1);
+                renderOrders();
+            });
+        });
+        document.querySelectorAll('.removeReturnedBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const orderIdx = parseInt(btn.dataset.order);
+                const rIdx = parseInt(btn.dataset.ridx);
+                currentOrders[orderIdx].returned.splice(rIdx, 1);
+                renderOrders();
+            });
+        });
+        document.querySelectorAll('.addBorrowedBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const orderIdx = parseInt(btn.dataset.order);
+                let modelListStr = "";
+                CATHETER_MODELS.forEach((m, i) => { modelListStr += `${i+1}. ${m.name} (${m.type})\n`; });
+                const input = prompt(`請輸入數字選擇借出型號：\n${modelListStr}\n請輸入數字 (1-${CATHETER_MODELS.length})`);
+                if (!input) return;
+                const num = parseInt(input);
+                if (isNaN(num) || num < 1 || num > CATHETER_MODELS.length) { alert("無效數字"); return; }
+                const model = CATHETER_MODELS[num-1].name;
+                const qty = parseInt(prompt("借出數量：", "1")) || 1;
+                currentOrders[orderIdx].borrowed.push({ model, qty });
+                renderOrders();
+            });
+        });
+        document.querySelectorAll('.addReturnedBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const orderIdx = parseInt(btn.dataset.order);
+                let modelListStr = "";
+                CATHETER_MODELS.forEach((m, i) => { modelListStr += `${i+1}. ${m.name} (${m.type})\n`; });
+                const input = prompt(`請輸入數字選擇歸還型號：\n${modelListStr}\n請輸入數字 (1-${CATHETER_MODELS.length})`);
+                if (!input) return;
+                const num = parseInt(input);
+                if (isNaN(num) || num < 1 || num > CATHETER_MODELS.length) { alert("無效數字"); return; }
+                const model = CATHETER_MODELS[num-1].name;
+                const qty = parseInt(prompt("歸還數量：", "1")) || 1;
+                if (!currentOrders[orderIdx].returned) currentOrders[orderIdx].returned = [];
+                currentOrders[orderIdx].returned.push({ model, qty });
+                renderOrders();
+            });
+        });
+    }
+
+    function newOrder() {
+        const patientName = prompt("病人姓名：");
+        if (!patientName) return;
+        const patientId = prompt("醫療編號：");
+        if (!patientId) return;
+        const surgeryDate = prompt("手術日期 (YYYY-MM-DD)：", new Date().toISOString().slice(0,10));
+        if (!surgeryDate) return;
+        let modelListStr = "";
+        CATHETER_MODELS.forEach((m, i) => { modelListStr += `${i+1}. ${m.name} (${m.type})\n`; });
+        const input = prompt(`請輸入數字選擇第一項借出導管型號：\n${modelListStr}\n請輸入數字 (1-${CATHETER_MODELS.length})`);
+        if (!input) return;
+        const num = parseInt(input);
+        if (isNaN(num) || num < 1 || num > CATHETER_MODELS.length) { alert("無效數字"); return; }
+        const model = CATHETER_MODELS[num-1].name;
+        const qty = parseInt(prompt("借出數量：", "1")) || 1;
+        const borrowed = [{ model, qty }];
+        const newOrderObj = { patientName, patientId, surgeryDate, borrowed, returned: [] };
+        currentOrders.push(newOrderObj);
+        renderOrders();
+    }
+
+    function copyPrevPeriodStock() {
+        const startDate = document.getElementById('startDate').value;
+        if (!startDate) return;
+        const currentStart = new Date(startDate);
+        let prevPeriodKey = null, prevEndDate = null;
+        for (const key in allPeriodsData) {
+            const [s, e] = key.split('_to_');
+            const endDateObj = new Date(e);
+            if (endDateObj < currentStart) {
+                if (!prevEndDate || endDateObj > new Date(prevEndDate)) { prevEndDate = e; prevPeriodKey = key; }
+            }
+        }
+        if (!prevPeriodKey) { alert("未找到上一區間資料"); return; }
+        const prevData = allPeriodsData[prevPeriodKey];
+        for (let i = 0; i < CATHETER_MODELS.length; i++) {
+            currentStockRows[i].prevStock = prevData.stockRows[i].endStock;
+            currentStockRows[i].inbound = 0;
+        }
+        recalcUsageAndReturnFromOrders();
+        renderStockTable();
+        renderUsageDetailTable();
+        saveCurrentPeriod();
+        alert("已複製上期結存作為本期期初，並清空本週入庫。");
+    }
+
+    function clearInOut() {
+        for (let i = 0; i < currentStockRows.length; i++) currentStockRows[i].inbound = 0;
+        recalcUsageAndReturnFromOrders();
+        renderStockTable();
+        renderUsageDetailTable();
+        saveCurrentPeriod();
+    }
+
+    function exportStockExcel() {
+        const sheetData = [["導管型號","單位","上週結存(期初)","本週入庫","本週實際使用","本週返貨(歸還)","本週結存"]];
+        for (let i=0; i<CATHETER_MODELS.length; i++) {
+            const m = CATHETER_MODELS[i];
+            const r = currentStockRows[i];
+            sheetData.push([m.name, m.unit, r.prevStock, r.inbound, r.used, r.returned, r.endStock]);
+        }
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `庫存_${currentPeriodKey}`);
+        XLSX.writeFile(wb, `導管庫存_${currentPeriodKey}.xlsx`);
+    }
+
+    function exportUsageDetailExcel() {
+        const sheetData = [["領用日期","病人姓名","醫療編號","導管型號","長期/臨時","領用數量(實際使用)","歸還數量","備註"]];
+        for (const order of currentOrders) {
+            for (const borrow of order.borrowed) {
+                const modelObj = CATHETER_MODELS.find(m => m.name === borrow.model);
+                if (!modelObj) continue;
+                const returnedItem = order.returned.find(r => r.model === borrow.model);
+                const returnQty = returnedItem ? returnedItem.qty : 0;
+                const actualUsed = borrow.qty - returnQty;
+                if (actualUsed === 0 && returnQty === borrow.qty) continue;
+                sheetData.push([
+                    order.surgeryDate, order.patientName, order.patientId, borrow.model,
+                    modelObj.type, actualUsed, returnQty,
+                    actualUsed > 0 ? '實際使用' : (returnQty > 0 ? '全數歸還' : '')
+                ]);
+            }
+        }
+        if (sheetData.length === 1) sheetData.push(["尚無借用單記錄"]);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `病人領用明細_${currentPeriodKey}`);
+        XLSX.writeFile(wb, `病人領用明細_${currentPeriodKey}.xlsx`);
+    }
+
+    function getMonthSummaryData(monthStr) {
+        const [year, month] = monthStr.split('-');
+        if (!year || !month) { alert("格式錯誤"); return null; }
+        const targetYear = parseInt(year), targetMonth = parseInt(month);
+        const periods = [];
+        for (const key in allPeriodsData) {
+            const [s, e] = key.split('_to_');
+            const endDate = new Date(e);
+            if (endDate.getFullYear() === targetYear && endDate.getMonth()+1 === targetMonth) {
+                periods.push({ key, endDate, data: allPeriodsData[key] });
+            }
+        }
+        if (periods.length === 0) { alert(`無 ${monthStr} 資料`); return null; }
+        periods.sort((a,b)=>a.endDate - b.endDate);
+        const summary = CATHETER_MODELS.map((model, idx) => {
+            let totalInbound = 0, totalUsed = 0, totalReturned = 0, lastEnd = 0;
+            for (let p of periods) {
+                const row = p.data.stockRows[idx];
+                totalInbound += row.inbound;
+                totalUsed += row.used;
+                totalReturned += row.returned;
+                lastEnd = row.endStock;
+            }
+            return { name: model.name, unit: model.unit, totalInbound, totalUsed, totalReturned, lastEnd };
+        });
+        return { summary, periodsCount: periods.length };
+    }
+
+    function showMonthSummary() {
+        const monthStr = prompt("輸入月份 (YYYY-MM)：", "2026-05");
+        if (!monthStr) return;
+        const res = getMonthSummaryData(monthStr);
+        if (!res) return;
+        let html = `<h4>${monthStr} 總結 (共 ${res.periodsCount} 個週期)</h4><table border="1"><thead><tr><th>導管型號</th><th>單位</th><th>總入庫</th><th>總實際使用</th><th>總返貨</th><th>月底結存</th></tr></thead><tbody>`;
+        for (const s of res.summary) {
+            html += `<tr><td>${s.name}</td><td>${s.unit}</td><td>${s.totalInbound}</td><td>${s.totalUsed}</td><td>${s.totalReturned}</td><td><strong>${s.lastEnd}</strong></td></tr>`;
+        }
+        html += `</tbody></table>`;
+        document.getElementById('summaryContent').innerHTML = html;
+        document.getElementById('summaryArea').style.display = 'block';
+    }
+
+    function exportMonthSummary() {
+        const monthStr = prompt("匯出月份 (YYYY-MM)：", "2026-05");
+        if (!monthStr) return;
+        const res = getMonthSummaryData(monthStr);
+        if (!res) return;
+        const sheetData = [["導管型號","單位","總入庫","總實際使用","總返貨","月底結存"]];
+        for (const s of res.summary) sheetData.push([s.name, s.unit, s.totalInbound, s.totalUsed, s.totalReturned, s.lastEnd]);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `每月總結_${monthStr}`);
+        XLSX.writeFile(wb, `導管每月總結_${monthStr}.xlsx`);
+    }
+
+    function exportYearSummary() {
+        const yearStr = prompt("匯出年份 (YYYY)：", "2026");
+        if (!yearStr) return;
+        const targetYear = parseInt(yearStr);
+        const periodsInYear = [];
+        for (const key in allPeriodsData) {
+            const [s, e] = key.split('_to_');
+            const endDate = new Date(e);
+            if (endDate.getFullYear() === targetYear) periodsInYear.push({ key, endDate, data: allPeriodsData[key] });
+        }
+        if (periodsInYear.length === 0) { alert(`無 ${yearStr} 資料`); return; }
+        periodsInYear.sort((a,b)=>a.endDate - b.endDate);
+        const summary = CATHETER_MODELS.map((model, idx) => {
+            let totalInbound = 0, totalUsed = 0, totalReturned = 0, lastEnd = 0;
+            for (let p of periodsInYear) {
+                const row = p.data.stockRows[idx];
+                totalInbound += row.inbound;
+                totalUsed += row.used;
+                totalReturned += row.returned;
+                lastEnd = row.endStock;
+            }
+            return { name: model.name, unit: model.unit, totalInbound, totalUsed, totalReturned, lastEnd };
+        });
+        const sheetData = [["導管型號","單位","全年總入庫","全年總實際使用","全年總返貨","年底結存"]];
+        for (const s of summary) sheetData.push([s.name, s.unit, s.totalInbound, s.totalUsed, s.totalReturned, s.lastEnd]);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `每年總結_${yearStr}`);
+        XLSX.writeFile(wb, `導管每年總結_${yearStr}.xlsx`);
+    }
+
+    function backupAll() {
+        saveCurrentPeriod();
+        const dataStr = JSON.stringify(allPeriodsData, null, 2);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `導管物料備份_${new Date().toISOString().slice(0,19)}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        alert("備份成功");
+    }
+
+    function restoreFromFile(file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const restored = JSON.parse(e.target.result);
+                allPeriodsData = restored;
+                saveAllData();
+                const start = document.getElementById('startDate').value;
+                const end = document.getElementById('endDate').value;
+                const periodKey = getPeriodKey(start, end);
+                loadPeriod(periodKey, start, end);
+                alert("還原成功");
+                document.getElementById('pathNotify').style.display = 'none';
+            } catch(err) { alert("還原失敗，檔案格式錯誤"); }
+        };
+        reader.readAsText(file);
+    }
+
+    function loadPeriod(periodKey, startDate, endDate) {
+        saveCurrentPeriod();
+        currentPeriodKey = periodKey;
+        const periodData = getPeriodData(periodKey);
+        currentStockRows = periodData.stockRows.map(r => ({ ...r }));
+        currentOrders = JSON.parse(JSON.stringify(periodData.orders || []));
+        recalcUsageAndReturnFromOrders();
+        renderStockTable();
+        renderUsageDetailTable();
+        renderOrders();
+        document.getElementById('startDate').value = startDate;
+        document.getElementById('endDate').value = endDate;
+        saveLastUsedInterval(startDate, endDate);
+    }
+
+    function saveLastUsedInterval(start, end) {
+        localStorage.setItem("lastCatheterStart", start);
+        localStorage.setItem("lastCatheterEnd", end);
+    }
+
+    function initDateRange() {
+        const lastStart = localStorage.getItem("lastCatheterStart");
+        const lastEnd = localStorage.getItem("lastCatheterEnd");
+        if (lastStart && lastEnd && !isNaN(new Date(lastStart)) && !isNaN(new Date(lastEnd))) {
+            document.getElementById('startDate').value = lastStart;
+            document.getElementById('endDate').value = lastEnd;
+            return;
+        }
+        const today = new Date();
+        const day = today.getDay();
+        let thursday = new Date(today);
+        if (day <= 4) thursday.setDate(today.getDate() + (4-day));
+        else thursday.setDate(today.getDate() + (4+7-day));
+        const friday = new Date(thursday);
+        friday.setDate(thursday.getDate() - 6);
+        const fmt = d => d.toISOString().slice(0,10);
+        document.getElementById('startDate').value = fmt(friday);
+        document.getElementById('endDate').value = fmt(thursday);
+    }
+
+    // 檢查是否有資料，若無則提示可能為路徑變更並建議還原
+    function checkDataAndNotify() {
+        // 檢查 localStorage 中是否有任何週期資料
+        const hasAnyData = Object.keys(allPeriodsData).length > 0;
+        if (!hasAnyData) {
+            const notifyDiv = document.getElementById('pathNotify');
+            notifyDiv.innerHTML = `⚠️ 偵測到目前為新環境或檔案位置可能已移動，先前儲存的資料不會自動轉移。<br>
+            請點擊上方工具列的 <strong>「📂 還原備份」</strong> 按鈕，選擇您先前備份的 JSON 檔案以恢復資料。<br>
+            若無備份檔，可直接開始記錄（資料將儲存於此路徑）。`;
+            notifyDiv.style.display = 'block';
+        } else {
+            // 可選：檢查當前週期是否有資料，若無也提示（但更常見的是完全沒資料）
+            const currentPeriodData = allPeriodsData[currentPeriodKey];
+            if (currentPeriodData && (currentPeriodData.orders.length === 0 && currentPeriodData.stockRows.every(r => r.prevStock === 0 && r.inbound === 0))) {
+                // 可選擇不提示，因為可能是新週期
+            }
+        }
+    }
+
+    function init() {
+        initDateRange();
+        loadAllData();
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        const periodKey = getPeriodKey(start, end);
+        loadPeriod(periodKey, start, end);
+        checkDataAndNotify();   // 新增：提醒可能的路徑變更
+
+        document.getElementById('loadPeriodBtn').addEventListener('click', () => {
+            const newStart = document.getElementById('startDate').value;
+            const newEnd = document.getElementById('endDate').value;
+            if (!newStart || !newEnd) return;
+            loadPeriod(getPeriodKey(newStart, newEnd), newStart, newEnd);
+        });
+        document.getElementById('copyPrevStockBtn').addEventListener('click', copyPrevPeriodStock);
+        document.getElementById('resetInOutBtn').addEventListener('click', clearInOut);
+        document.getElementById('exportStockBtn').addEventListener('click', exportStockExcel);
+        document.getElementById('exportUsageDetailBtn').addEventListener('click', exportUsageDetailExcel);
+        document.getElementById('monthSummaryBtn').addEventListener('click', showMonthSummary);
+        document.getElementById('exportMonthBtn').addEventListener('click', exportMonthSummary);
+        document.getElementById('exportYearBtn').addEventListener('click', exportYearSummary);
+        document.getElementById('backupBtn').addEventListener('click', backupAll);
+        document.getElementById('restoreBtn').addEventListener('click', () => document.getElementById('restoreFileInput').click());
+        document.getElementById('restoreFileInput').addEventListener('change', e => {
+            if (e.target.files.length) restoreFromFile(e.target.files[0]);
+            e.target.value = '';
+        });
+        document.getElementById('newOrderBtn').addEventListener('click', newOrder);
+        window.addEventListener('beforeunload', () => saveCurrentPeriod());
+    }
+    init();
+</script>
+</body>
+</html>
