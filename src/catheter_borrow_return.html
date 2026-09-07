@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
@@ -91,8 +91,8 @@
     <div class="table-wrapper">
         <table id="stockTable">
             <thead>
-                <tr><th>導管型號</th><th>單位</th><th>上週結存(期初)</th><th>本週入庫</th><th>本週實際使用</th><th>本週返貨(歸還)</th><th>本週結存</th></tr>
-                <tr style="background:#f0f8ff"><th colspan="7">⚠️ 操作：手動填寫「上週結存」、「本週入庫」。「實際使用」與「返貨」由下方借用單自動計算。</th></tr>
+                <tr><th>導管型號</th><th>單位</th><th>Loc No.</th><th>到期日期</th><th>上週結存(期初)</th><th>本週入庫</th><th>本週實際使用</th><th>本週返貨(歸還)</th><th>本週結存</th></tr>
+                <tr style="background:#f0f8ff"><th colspan="9">⚠️ 操作：手動填寫 Loc No.、到期日期、上週結存、本週入庫。「實際使用」與「返貨」由下方借用單自動計算。到期日與 Loc No. 會隨儲存保留。</th></tr>
             </thead>
             <tbody id="stockBody"></tbody>
         </table>
@@ -154,7 +154,7 @@
 
     function getPeriodData(periodKey) {
         if (!allPeriodsData[periodKey]) {
-            const stockRows = CATHETER_MODELS.map(() => ({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0 }));
+            const stockRows = CATHETER_MODELS.map(() => ({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0, locNo: "", expiryDate: "" }));
             allPeriodsData[periodKey] = { stockRows: stockRows, orders: [] };
         }
         return allPeriodsData[periodKey];
@@ -163,7 +163,7 @@
     function saveCurrentPeriod() {
         if (!currentPeriodKey) return;
         const periodData = getPeriodData(currentPeriodKey);
-        periodData.stockRows = currentStockRows.map(r => ({ ...r }));
+        periodData.stockRows = currentStockRows.map(r => ({ prevStock: r.prevStock||0, inbound: r.inbound||0, used: r.used||0, returned: r.returned||0, endStock: r.endStock||0, locNo: r.locNo||"", expiryDate: r.expiryDate||"" }));
         periodData.orders = JSON.parse(JSON.stringify(currentOrders));
         allPeriodsData[currentPeriodKey] = periodData;
         saveAllData();
@@ -203,10 +203,14 @@
         for (let i = 0; i < CATHETER_MODELS.length; i++) {
             const model = CATHETER_MODELS[i];
             const row = currentStockRows[i];
+            if (row.locNo == null) row.locNo = "";
+            if (row.expiryDate == null) row.expiryDate = "";
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${model.name}${model.type ? ` (${model.type})` : ''}</td>
                 <td>${model.unit}</td>
+                <td><input type="text" class="locNo" data-idx="${i}" value="${String(row.locNo).replace(/"/g, '&quot;')}" placeholder="位置編號" style="text-align:left;"></td>
+                <td><input type="date" class="expiryDate" data-idx="${i}" value="${row.expiryDate || ''}"></td>
                 <td><input type="number" class="prevStock" data-idx="${i}" value="${row.prevStock}"></td>
                 <td><input type="number" class="inbound" data-idx="${i}" value="${row.inbound}"></td>
                 <td class="readonly-cell usedCell">${row.used}</td>
@@ -226,6 +230,25 @@
                 renderUsageDetailTable();
                 saveCurrentPeriod();
             });
+        });
+        // Loc No. / 到期日期：寫入資料後儲存，不重繪整個表格，避免輸入被重置或失焦
+        document.querySelectorAll('.locNo').forEach(inp => {
+            const commit = (e) => {
+                const idx = parseInt(e.target.dataset.idx);
+                currentStockRows[idx].locNo = e.target.value;
+                saveCurrentPeriod();
+            };
+            inp.addEventListener('change', commit);
+            inp.addEventListener('blur', commit);
+        });
+        document.querySelectorAll('.expiryDate').forEach(inp => {
+            const commit = (e) => {
+                const idx = parseInt(e.target.dataset.idx);
+                currentStockRows[idx].expiryDate = e.target.value;
+                saveCurrentPeriod();
+            };
+            inp.addEventListener('change', commit);
+            inp.addEventListener('input', commit);
         });
     }
 
@@ -452,11 +475,11 @@
     }
 
     function exportStockExcel() {
-        const sheetData = [["導管型號","單位","上週結存(期初)","本週入庫","本週實際使用","本週返貨(歸還)","本週結存"]];
+        const sheetData = [["導管型號","單位","Loc No.","到期日期","上週結存(期初)","本週入庫","本週實際使用","本週返貨(歸還)","本週結存"]];
         for (let i=0; i<CATHETER_MODELS.length; i++) {
             const m = CATHETER_MODELS[i];
             const r = currentStockRows[i];
-            sheetData.push([m.name, m.unit, r.prevStock, r.inbound, r.used, r.returned, r.endStock]);
+            sheetData.push([m.name, m.unit, r.locNo||"", r.expiryDate||"", r.prevStock, r.inbound, r.used, r.returned, r.endStock]);
         }
         const ws = XLSX.utils.aoa_to_sheet(sheetData);
         const wb = XLSX.utils.book_new();
@@ -608,7 +631,19 @@
         saveCurrentPeriod();
         currentPeriodKey = periodKey;
         const periodData = getPeriodData(periodKey);
-        currentStockRows = periodData.stockRows.map(r => ({ ...r }));
+        currentStockRows = periodData.stockRows.map((r, i) => ({
+            prevStock: r.prevStock || 0,
+            inbound: r.inbound || 0,
+            used: r.used || 0,
+            returned: r.returned || 0,
+            endStock: r.endStock || 0,
+            locNo: r.locNo != null ? r.locNo : "",
+            expiryDate: r.expiryDate != null ? r.expiryDate : ""
+        }));
+        // ensure length matches models
+        while (currentStockRows.length < CATHETER_MODELS.length) {
+            currentStockRows.push({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0, locNo: "", expiryDate: "" });
+        }
         currentOrders = JSON.parse(JSON.stringify(periodData.orders || []));
         recalcUsageAndReturnFromOrders();
         renderStockTable();

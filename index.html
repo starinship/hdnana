@@ -6,140 +6,66 @@
 <title>血液透析記錄中心</title>
 <style>
 
-:root {
-  --nana-primary: #0066b4;
-  --nana-accent: #2c7da0;
-  --nana-bg: #e9f0f5;
-  --nana-ok: #2c6e2f;
-  --nana-warn: #b85c1a;
-}
+:root { --nana-primary:#0066b4; --nana-accent:#2c7da0; --nana-bg:#e9f0f5; --nana-ok:#2c6e2f; --nana-warn:#b85c1a; }
 * { box-sizing: border-box; }
-body {
-  font-family: 'Segoe UI', '微軟正黑體', 'Microsoft JhengHei', Roboto, sans-serif;
-  background: var(--nana-bg);
-  margin: 0;
-  padding: 0;
-  color: #1a2a3a;
-}
-.app-shell { max-width: 1700px; margin: 0 auto; padding: 12px 16px 40px; }
-.app-header {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-  padding: 16px 20px;
-  margin-bottom: 14px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.app-header-top {
-  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
-}
-.app-title {
-  font-size: 1.45rem; font-weight: 800; color: var(--nana-primary);
-  border-left: 6px solid var(--nana-primary); padding-left: 14px; margin: 0;
-}
-.chrome-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.chrome-actions label { font-weight: bold; color: #004d80; font-size: 0.9rem; }
-.chrome-actions input[type="date"] {
-  padding: 6px 10px; border-radius: 16px; border: 1px solid #ccd; background: #fef9e3;
-}
-.save-status {
-  font-size: 0.85rem; color: #5e6f8d; min-width: 140px;
-}
-.save-status.saved { color: var(--nana-ok); font-weight: 600; }
-.tab-bar {
-  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
-}
-.tab-btn {
-  background: #dfeaf5; border: none; color: #004d80; font-weight: bold;
-  padding: 10px 18px; border-radius: 999px; cursor: pointer; font-size: 0.95rem;
-  transition: 0.15s;
-}
-.tab-btn:hover { background: #c5daf0; }
-.tab-btn.active {
-  background: var(--nana-primary); color: white;
-  box-shadow: 0 4px 12px rgba(0,102,180,0.35);
-}
-.panel {
-  display: none;
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-  padding: 18px;
-  margin-top: 12px;
-}
-.panel.active { display: block; }
-.panel h2 { color: #0066b4; border-left: 6px solid #0066b4; padding-left: 16px; }
-button, .btn {
-  background: #2c7da0; border: none; color: white; font-weight: bold;
-  padding: 6px 16px; border-radius: 30px; cursor: pointer; font-size: 0.9rem;
-}
-button:hover { background: #1f5e7a; }
-.btn-save { background: #1b7a3d !important; }
-.btn-save:hover { background: #146330 !important; }
-.btn-success, .btn-add, .btn-backup { background: #2c6e2f; }
-.btn-danger, .btn-restore { background: #b85c1a; }
-.btn-secondary { background: #5e6b7c; }
-.btn-export { background: #4a6fa5; }
-.toolbar {
-  display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0;
-  align-items: center; background: #f0f7ff; padding: 12px 20px; border-radius: 40px;
-}
-.toolbar label, .toolbar span { font-weight: bold; color: #004d80; }
-.table-wrapper {
-  overflow-x: auto; border-radius: 16px; border: 1px solid #d4dee5;
-  background: #fff; margin: 15px 0;
-}
-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-th {
-  background: #e3eff9; color: #004070; padding: 10px 6px;
-  border: 1px solid #cbdbe2; position: sticky; top: 0; z-index: 1;
-}
-td { border: 1px solid #dee2e8; padding: 6px 4px; background-color: #fff; }
-input, select {
-  width: 100%; border: none; background: #fef9e3; font-size: 12px;
-  padding: 6px; border-radius: 8px; text-align: center;
-}
-input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
-.readonly-cell { background: #f0f7ff; font-weight: bold; text-align: center; }
-.footer-note {
-  font-size: 12px; color: #5e6f8d; margin-top: 20px;
-  background: #f8f9fc; padding: 12px; border-radius: 16px;
-  border-left: 4px solid #2c7da0;
-}
-.notification {
-  background: #fff3cd; border-left: 6px solid #ffc107;
-  padding: 12px 20px; margin-bottom: 20px; border-radius: 12px; font-weight: bold;
-}
-.summary-area, .month-summary {
-  margin-top: 30px; background: #f8fafc; border-radius: 20px;
-  padding: 15px; border: 1px solid #cbd5e1;
-}
-.order-card {
-  background: #fef9e3; border-radius: 16px; padding: 12px;
-  margin-bottom: 20px; border: 1px solid #ffe0a3;
-}
-.flex-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
-.warning-row, .warning-row td { background-color: #ffe6e6 !important; }
-.status-badge { font-weight: bold; padding: 4px 8px; border-radius: 20px; display: inline-block; font-size: 12px; }
-.status-warning { background-color: #ff9999; color: #a10000; }
-.status-normal { background-color: #c8e6c9; color: #1e5a1e; }
-.delete-btn { background: #dc3545; border: none; color: white; padding: 4px 8px; border-radius: 20px; cursor: pointer; font-size: 12px; }
-.delete-btn:hover { background: #b02a37; }
-.current-date { margin-left: auto; font-size: 0.9rem; }
-.sub-header { background: #d9e9f5; font-size: 0.85rem; }
-@media (max-width: 720px) {
-  .app-title { font-size: 1.15rem; }
-  .tab-btn { flex: 1 1 auto; text-align: center; padding: 10px 12px; font-size: 0.85rem; }
-  .toolbar { border-radius: 16px; }
-  table { min-width: 720px; }
+body { font-family:'Segoe UI','微軟正黑體','Microsoft JhengHei',Roboto,sans-serif; background:var(--nana-bg); margin:0; padding:0; color:#1a2a3a; }
+.app-shell { max-width:1700px; margin:0 auto; padding:12px 16px 40px; }
+.app-header { background:white; border-radius:20px; box-shadow:0 8px 24px rgba(0,0,0,0.08); padding:16px 20px; margin-bottom:14px; position:sticky; top:0; z-index:100; }
+.app-header-top { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+.app-title { font-size:1.45rem; font-weight:800; color:var(--nana-primary); border-left:6px solid var(--nana-primary); padding-left:14px; margin:0; }
+.chrome-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.chrome-actions label { font-weight:bold; color:#004d80; font-size:0.9rem; }
+.chrome-actions input[type="date"] { padding:6px 10px; border-radius:16px; border:1px solid #ccd; background:#fef9e3; }
+.save-status { font-size:0.85rem; color:#5e6f8d; min-width:140px; }
+.save-status.saved { color:var(--nana-ok); font-weight:600; }
+.tab-bar { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.tab-btn { background:#dfeaf5; border:none; color:#004d80; font-weight:bold; padding:10px 18px; border-radius:999px; cursor:pointer; font-size:0.95rem; transition:0.15s; }
+.tab-btn:hover { background:#c5daf0; }
+.tab-btn.active { background:var(--nana-primary); color:white; box-shadow:0 4px 12px rgba(0,102,180,0.35); }
+.panel { display:none; background:white; border-radius:20px; box-shadow:0 8px 20px rgba(0,0,0,0.08); padding:18px; margin-top:12px; }
+.panel.active { display:block; }
+.panel h2 { color:#0066b4; border-left:6px solid #0066b4; padding-left:16px; }
+button, .btn { background:#2c7da0; border:none; color:white; font-weight:bold; padding:6px 16px; border-radius:30px; cursor:pointer; font-size:0.9rem; }
+button:hover { background:#1f5e7a; }
+.btn-save { background:#1b7a3d !important; }
+.btn-save:hover { background:#146330 !important; }
+.btn-success, .btn-add, .btn-backup { background:#2c6e2f; }
+.btn-danger, .btn-restore { background:#b85c1a; }
+.btn-secondary { background:#5e6b7c; }
+.btn-export { background:#4a6fa5; }
+.toolbar { display:flex; flex-wrap:wrap; gap:12px; margin:16px 0; align-items:center; background:#f0f7ff; padding:12px 20px; border-radius:40px; }
+.toolbar label, .toolbar span { font-weight:bold; color:#004d80; }
+.table-wrapper { overflow-x:auto; border-radius:16px; border:1px solid #d4dee5; background:#fff; margin:15px 0; }
+table { width:100%; border-collapse:collapse; font-size:12.5px; }
+th { background:#e3eff9; color:#004070; padding:10px 6px; border:1px solid #cbdbe2; position:sticky; top:0; z-index:1; }
+td { border:1px solid #dee2e8; padding:6px 4px; background-color:#fff; }
+input, select { width:100%; border:none; background:#fef9e3; font-size:12px; padding:6px; border-radius:8px; text-align:center; }
+input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
+.readonly-cell { background:#f0f7ff; font-weight:bold; text-align:center; }
+.footer-note { font-size:12px; color:#5e6f8d; margin-top:20px; background:#f8f9fc; padding:12px; border-radius:16px; border-left:4px solid #2c7da0; }
+.notification { background:#fff3cd; border-left:6px solid #ffc107; padding:12px 20px; margin-bottom:20px; border-radius:12px; font-weight:bold; }
+.summary-area, .month-summary { margin-top:30px; background:#f8fafc; border-radius:20px; padding:15px; border:1px solid #cbd5e1; }
+.order-card { background:#fef9e3; border-radius:16px; padding:12px; margin-bottom:20px; border:1px solid #ffe0a3; }
+.flex-row { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0; align-items:center; }
+.warning-row, .warning-row td { background-color:#ffe6e6 !important; }
+.status-badge { font-weight:bold; padding:4px 8px; border-radius:20px; display:inline-block; font-size:12px; }
+.status-warning { background-color:#ff9999; color:#a10000; }
+.status-normal { background-color:#c8e6c9; color:#1e5a1e; }
+.delete-btn { background:#dc3545; border:none; color:white; padding:4px 8px; border-radius:20px; cursor:pointer; font-size:12px; }
+.delete-btn:hover { background:#b02a37; }
+.current-date { margin-left:auto; font-size:0.9rem; }
+.sub-header { background:#d9e9f5; font-size:0.85rem; }
+@media (max-width:720px) {
+  .app-title { font-size:1.15rem; }
+  .tab-btn { flex:1 1 auto; text-align:center; padding:10px 12px; font-size:0.85rem; }
+  .toolbar { border-radius:16px; }
+  table { min-width:720px; }
 }
 @media print {
-  .app-header, .tab-bar, .chrome-actions, .no-print { display: none !important; }
-  .panel { display: block !important; box-shadow: none; }
-  .panel:not(.active) { display: none !important; }
-  body { background: white; }
+  .app-header, .tab-bar, .chrome-actions, .no-print { display:none !important; }
+  .panel { display:block !important; box-shadow:none; }
+  .panel:not(.active) { display:none !important; }
+  body { background:white; }
 }
 
 </style>
@@ -194,8 +120,8 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
     <div class="table-wrapper">
         <table id="cat_stockTable">
             <thead>
-                <tr><th>導管型號</th><th>單位</th><th>上週結存(期初)</th><th>本週入庫</th><th>本週實際使用</th><th>本週返貨(歸還)</th><th>本週結存</th></tr>
-                <tr style="background:#f0f8ff"><th colspan="7">⚠️ 操作：手動填寫「上週結存」、「本週入庫」。「實際使用」與「返貨」由下方借用單自動計算。</th></tr>
+                <tr><th>導管型號</th><th>單位</th><th>Loc No.</th><th>到期日期</th><th>上週結存(期初)</th><th>本週入庫</th><th>本週實際使用</th><th>本週返貨(歸還)</th><th>本週結存</th></tr>
+                <tr style="background:#f0f8ff"><th colspan="9">⚠️ 操作：手動填寫 Loc No.、到期日期、上週結存、本週入庫。「實際使用」與「返貨」由下方借用單自動計算。到期日與 Loc No. 會隨儲存保留。</th></tr>
             </thead>
             <tbody id="cat_stockBody"></tbody>
         </table>
@@ -322,7 +248,6 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
 </div>
 
 <script>
-/* Shared utilities & chrome */
 (function() {
   const TZ = 'Asia/Macau';
   const LS_GLOBAL_DATE = 'nana_globalDate';
@@ -347,9 +272,7 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
     try {
       const d = new Date(iso);
       return '已儲存 ' + d.toLocaleString('zh-HK', { timeZone: TZ, hour12: false });
-    } catch (e) {
-      return '已儲存';
-    }
+    } catch (e) { return '已儲存'; }
   }
 
   window.__nanaMarkSaved = function(module) {
@@ -378,12 +301,6 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
   }
 
   function manualSave() {
-    const active = document.querySelector('.tab-btn.active');
-    const tab = active ? active.dataset.tab : 'catheter';
-    if (tab === 'catheter' && window.__nanaSave_catheter) window.__nanaSave_catheter();
-    else if (tab === 'backup' && window.__nanaSave_backup) window.__nanaSave_backup();
-    else if (tab === 'weekly' && window.__nanaSave_weekly) window.__nanaSave_weekly();
-    // Also save all modules for safety
     if (window.__nanaSave_catheter) window.__nanaSave_catheter();
     if (window.__nanaSave_backup) window.__nanaSave_backup();
     if (window.__nanaSave_weekly) window.__nanaSave_weekly();
@@ -405,16 +322,10 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
       exportedAt: new Date().toISOString(),
       globalDate: document.getElementById('globalDate').value,
       catheter: JSON.parse(localStorage.getItem('CatheterBorrowData_v2') || '{}'),
-      catheterDates: {
-        start: localStorage.getItem('lastCatheterStart'),
-        end: localStorage.getItem('lastCatheterEnd')
-      },
+      catheterDates: { start: localStorage.getItem('lastCatheterStart'), end: localStorage.getItem('lastCatheterEnd') },
       backup: JSON.parse(localStorage.getItem('BackupBatchInventory') || '[]'),
       weekly: JSON.parse(localStorage.getItem('HD_PeriodsData_v2') || '{}'),
-      weeklyDates: {
-        start: localStorage.getItem('lastUsedStartDate'),
-        end: localStorage.getItem('lastUsedEndDate')
-      }
+      weeklyDates: { start: localStorage.getItem('lastUsedStartDate'), end: localStorage.getItem('lastUsedEndDate') }
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -456,7 +367,6 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    // Global date: default once to Macau today, persist forever unless user changes
     const g = document.getElementById('globalDate');
     let saved = localStorage.getItem(LS_GLOBAL_DATE);
     if (!saved) {
@@ -465,15 +375,13 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
     }
     g.value = saved;
     g.addEventListener('change', function() {
-      // Never overwrite unless user changes — only persist their choice
       localStorage.setItem(LS_GLOBAL_DATE, g.value);
     });
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
-    const lastTab = localStorage.getItem(LS_ACTIVE_TAB) || 'catheter';
-    switchTab(lastTab);
+    switchTab(localStorage.getItem(LS_ACTIVE_TAB) || 'catheter');
 
     document.getElementById('btnSave').addEventListener('click', manualSave);
     document.getElementById('btnExportAll').addEventListener('click', exportAll);
@@ -483,17 +391,14 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
       e.target.value = '';
     });
     document.getElementById('btnPrint').addEventListener('click', () => window.print());
-
     refreshSaveStatus();
 
-    // Init modules
     if (window.__nanaInit_catheter) window.__nanaInit_catheter();
     if (window.__nanaInit_backup) window.__nanaInit_backup();
     if (window.__nanaInit_weekly) window.__nanaInit_weekly();
   });
 })();
 </script>
-
 
 <script>
 (function() {
@@ -534,7 +439,7 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
 
     function getPeriodData(periodKey) {
         if (!allPeriodsData[periodKey]) {
-            const stockRows = CATHETER_MODELS.map(() => ({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0 }));
+            const stockRows = CATHETER_MODELS.map(() => ({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0, locNo: "", expiryDate: "" }));
             allPeriodsData[periodKey] = { stockRows: stockRows, orders: [] };
         }
         return allPeriodsData[periodKey];
@@ -543,7 +448,7 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
     function saveCurrentPeriod() {
         if (!currentPeriodKey) return;
         const periodData = getPeriodData(currentPeriodKey);
-        periodData.stockRows = currentStockRows.map(r => ({ ...r }));
+        periodData.stockRows = currentStockRows.map(r => ({ prevStock: r.prevStock||0, inbound: r.inbound||0, used: r.used||0, returned: r.returned||0, endStock: r.endStock||0, locNo: r.locNo||"", expiryDate: r.expiryDate||"" }));
         periodData.orders = JSON.parse(JSON.stringify(currentOrders));
         allPeriodsData[currentPeriodKey] = periodData;
         saveAllData();
@@ -583,10 +488,14 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
         for (let i = 0; i < CATHETER_MODELS.length; i++) {
             const model = CATHETER_MODELS[i];
             const row = currentStockRows[i];
+            if (row.locNo == null) row.locNo = "";
+            if (row.expiryDate == null) row.expiryDate = "";
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${model.name}${model.type ? ` (${model.type})` : ''}</td>
                 <td>${model.unit}</td>
+                <td><input type="text" class="locNo" data-idx="${i}" value="${String(row.locNo).replace(/"/g, '&quot;')}" placeholder="位置編號" style="text-align:left;"></td>
+                <td><input type="date" class="expiryDate" data-idx="${i}" value="${row.expiryDate || ''}"></td>
                 <td><input type="number" class="prevStock" data-idx="${i}" value="${row.prevStock}"></td>
                 <td><input type="number" class="inbound" data-idx="${i}" value="${row.inbound}"></td>
                 <td class="readonly-cell usedCell">${row.used}</td>
@@ -606,6 +515,25 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
                 renderUsageDetailTable();
                 saveCurrentPeriod();
             });
+        });
+        // Loc No. / 到期日期：寫入資料後儲存，不重繪整個表格，避免輸入被重置或失焦
+        document.querySelectorAll('.locNo').forEach(inp => {
+            const commit = (e) => {
+                const idx = parseInt(e.target.dataset.idx);
+                currentStockRows[idx].locNo = e.target.value;
+                saveCurrentPeriod();
+            };
+            inp.addEventListener('change', commit);
+            inp.addEventListener('blur', commit);
+        });
+        document.querySelectorAll('.expiryDate').forEach(inp => {
+            const commit = (e) => {
+                const idx = parseInt(e.target.dataset.idx);
+                currentStockRows[idx].expiryDate = e.target.value;
+                saveCurrentPeriod();
+            };
+            inp.addEventListener('change', commit);
+            inp.addEventListener('input', commit);
         });
     }
 
@@ -832,11 +760,11 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
     }
 
     function exportStockExcel() {
-        const sheetData = [["導管型號","單位","上週結存(期初)","本週入庫","本週實際使用","本週返貨(歸還)","本週結存"]];
+        const sheetData = [["導管型號","單位","Loc No.","到期日期","上週結存(期初)","本週入庫","本週實際使用","本週返貨(歸還)","本週結存"]];
         for (let i=0; i<CATHETER_MODELS.length; i++) {
             const m = CATHETER_MODELS[i];
             const r = currentStockRows[i];
-            sheetData.push([m.name, m.unit, r.prevStock, r.inbound, r.used, r.returned, r.endStock]);
+            sheetData.push([m.name, m.unit, r.locNo||"", r.expiryDate||"", r.prevStock, r.inbound, r.used, r.returned, r.endStock]);
         }
         const ws = XLSX.utils.aoa_to_sheet(sheetData);
         const wb = XLSX.utils.book_new();
@@ -988,7 +916,19 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
         saveCurrentPeriod();
         currentPeriodKey = periodKey;
         const periodData = getPeriodData(periodKey);
-        currentStockRows = periodData.stockRows.map(r => ({ ...r }));
+        currentStockRows = periodData.stockRows.map((r, i) => ({
+            prevStock: r.prevStock || 0,
+            inbound: r.inbound || 0,
+            used: r.used || 0,
+            returned: r.returned || 0,
+            endStock: r.endStock || 0,
+            locNo: r.locNo != null ? r.locNo : "",
+            expiryDate: r.expiryDate != null ? r.expiryDate : ""
+        }));
+        // ensure length matches models
+        while (currentStockRows.length < CATHETER_MODELS.length) {
+            currentStockRows.push({ prevStock: 0, inbound: 0, used: 0, returned: 0, endStock: 0, locNo: "", expiryDate: "" });
+        }
         currentOrders = JSON.parse(JSON.stringify(periodData.orders || []));
         recalcUsageAndReturnFromOrders();
         renderStockTable();
@@ -1087,7 +1027,6 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
 
 })();
 </script>
-
 
 <script>
 (function() {
@@ -1412,7 +1351,6 @@ input:focus, select:focus { background: #fff2cc; outline: 1px solid #2c7da0; }
 
 })();
 </script>
-
 
 <script>
 (function() {
