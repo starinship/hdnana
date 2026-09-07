@@ -741,8 +741,12 @@ input:focus, select:focus { background:#fff2cc; outline:1px solid #2c7da0; }
         if (!prevPeriodKey) { alert("未找到上一區間資料"); return; }
         const prevData = allPeriodsData[prevPeriodKey];
         for (let i = 0; i < CATHETER_MODELS.length; i++) {
-            currentStockRows[i].prevStock = prevData.stockRows[i].endStock;
+            const prevRow = prevData.stockRows[i] || {};
+            currentStockRows[i].prevStock = prevRow.endStock || 0;
             currentStockRows[i].inbound = 0;
+            // 帶入上期 Loc No.／到期日期，避免切換區間後被清空
+            if (prevRow.locNo != null && prevRow.locNo !== "") currentStockRows[i].locNo = prevRow.locNo;
+            if (prevRow.expiryDate) currentStockRows[i].expiryDate = prevRow.expiryDate;
         }
         recalcUsageAndReturnFromOrders();
         renderStockTable();
